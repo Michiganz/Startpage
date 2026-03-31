@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Hors-Ligne - Pyramid Startpage</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #e5e2e1;
+        }
+        h1 { color: #63dcae; }
+        .check { color: #63dcae; }
+        .cross { color: #ff6b6b; }
+        ul { line-height: 2; }
+        a {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #63dcae;
+            color: #003827;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        a:hover { background: #81f8c9; }
+        .info {
+            background: rgba(99, 220, 174, 0.1);
+            border: 1px solid rgba(99, 220, 174, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>✅ Pyramid Startpage - Prête pour le mode hors-ligne</h1>
+    
+    <div class="info">
+        <strong>Ressources locales :</strong>
+        <ul>
+            <li class="check">✓ Tailwind CSS (style.css)</li>
+            <li class="check">✓ Polices (fonts/)</li>
+            <li class="check">✓ Images de fond (assets/backgrounds/)</li>
+            <li class="check">✓ Service Worker (sw.js)</li>
+            <li class="check">✓ Météo avec cache localStorage</li>
+        </ul>
+    </div>
+
+    <p>
+        Pour tester le mode hors-ligne :
+    </p>
+    <ul>
+        <li>Ouvrez <code>new_tab.html</code> dans votre navigateur</li>
+        <li>Déconnectez-vous d'Internet</li>
+        <li>Actualisez la page - tout devrait fonctionner !</li>
+    </ul>
+
+    <a href="new_tab.html" target="_blank">Ouvrir new_tab.html →</a>
+</body>
+</html>

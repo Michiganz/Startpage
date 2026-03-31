@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 54 54" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <g id="Plan-de-travail1" serif:id="Plan de travail1" transform="matrix(0.506308,0,0,1.024418,-15.459457,-15.404337)">
+        <rect x="30.534" y="15.037" width="106.062" height="52.42" style="fill:none;"/>
+        <g id="Calque_1-2" transform="matrix(1.975083,0,0,0.976164,-28.718786,0.618535)">
+            <g transform="matrix(1,0,0,1,-26.180992,0.373542)">
+                <g transform="matrix(1,0,0,1,-48.054008,15.037158)">
+                    <path d="M127.83,52.42L144.59,25.63L131.86,12.31L127.83,52.42Z" style="fill:rgb(253,172,13);fill-rule:nonzero;"/>
+                    <path d="M117.58,20.21L127.83,52.42L131.86,12.31L117.58,20.21Z" style="fill:rgb(166,83,8);fill-rule:nonzero;"/>
+                    <circle cx="133.78" cy="4.19" r="4.19" style="fill:white;"/>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>
