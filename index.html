@@ -125,21 +125,77 @@
             document.getElementById('date').textContent = `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]}`;
         }
 
+        /**
+         * Correspondance des codes WMO (Open-Meteo) → icône Font Awesome + couleur
+         * Codes complets : https://open-meteo.com/en/docs#weathervariables
+         *
+         * Contexte camerounais :
+         *  - Saison des pluies (avr–juin, sept–nov) : codes 61–82 et 95–99 très fréquents
+         *  - Harmattan (déc–fév) : codes 0–3, parfois 45 (brume sèche)
+         *  - Pas de neige en plaine — codes 71–77 quasi inexistants sauf Mont Cameroun
+         */
         const WEATHER_ICONS = {
-            0: 'fa-sun', 1: 'fa-cloud-sun', 2: 'fa-cloud-sun',
-            3: 'fa-cloud', 45: 'fa-smog', 48: 'fa-smog',
-            51: 'fa-cloud-rain', 53: 'fa-cloud-rain', 55: 'fa-cloud-rain',
-            61: 'fa-cloud-rain', 63: 'fa-cloud-rain', 65: 'fa-cloud-rain',
-            71: 'fa-snowflake', 73: 'fa-snowflake', 75: 'fa-snowflake', 77: 'fa-snowflake',
-            80: 'fa-cloud-rain', 81: 'fa-cloud-rain', 82: 'fa-cloud-rain',
-            95: 'fa-bolt', 96: 'fa-bolt', 99: 'fa-bolt'
+            // ── Ciel dégagé ──────────────────────────────────────────
+            0:  { icon: 'fa-sun',                  color: '#FFD700' }, // Soleil franc
+
+            // ── Principalement dégagé / Partiellement nuageux ────────
+            1:  { icon: 'fa-cloud-sun',             color: '#FFC107' }, // Quelques nuages
+            2:  { icon: 'fa-cloud-sun',             color: '#F0A500' }, // Mi-nuageux
+
+            // ── Couvert ───────────────────────────────────────────────
+            3:  { icon: 'fa-cloud',                 color: '#a8c4b8' }, // Ciel gris uniforme
+
+            // ── Brouillard / Brume sèche (harmattan) ─────────────────
+            45: { icon: 'fa-smog',                  color: '#c8b89a' }, // Brouillard
+            48: { icon: 'fa-smog',                  color: '#b8a888' }, // Brouillard givrant (rare CM)
+
+            // ── Bruine (crachin : très courant à Douala) ─────────────
+            51: { icon: 'fa-cloud-rain',            color: '#90cce0' }, // Bruine légère
+            53: { icon: 'fa-cloud-rain',            color: '#60b0d0' }, // Bruine modérée
+            55: { icon: 'fa-cloud-rain',            color: '#3a98c0' }, // Bruine dense
+
+            // ── Bruine verglaçante (quasi inexistant au Cameroun) ─────
+            56: { icon: 'fa-cloud-rain',            color: '#60b0d0' },
+            57: { icon: 'fa-cloud-rain',            color: '#3a98c0' },
+
+            // ── Pluie ─────────────────────────────────────────────────
+            61: { icon: 'fa-cloud-rain',            color: '#7ec8e3' }, // Pluie légère
+            63: { icon: 'fa-cloud-showers-heavy',   color: '#4aa8c8' }, // Pluie modérée
+            65: { icon: 'fa-cloud-showers-heavy',   color: '#1a88a8' }, // Pluie forte
+
+            // ── Pluie verglaçante (quasi inexistant au Cameroun) ──────
+            66: { icon: 'fa-cloud-rain',            color: '#4aa8c8' },
+            67: { icon: 'fa-cloud-showers-heavy',   color: '#1a88a8' },
+
+            // ── Neige (seulement sommet Mont Cameroun ~4 095 m) ───────
+            71: { icon: 'fa-snowflake',             color: '#cce8ff' },
+            73: { icon: 'fa-snowflake',             color: '#b0d8ff' },
+            75: { icon: 'fa-snowflake',             color: '#90c8ff' },
+            77: { icon: 'fa-snowflake',             color: '#80b8f0' }, // Grésil
+
+            // ── Averses (saison des pluies au Cameroun) ───────────────
+            80: { icon: 'fa-cloud-rain',            color: '#7ec8e3' }, // Averse légère
+            81: { icon: 'fa-cloud-showers-heavy',   color: '#3a98c0' }, // Averse modérée
+            82: { icon: 'fa-cloud-showers-heavy',   color: '#0a6888' }, // Averse violente
+
+            // ── Averses de neige ──────────────────────────────────────
+            85: { icon: 'fa-snowflake',             color: '#b0d8ff' },
+            86: { icon: 'fa-snowflake',             color: '#90c8ff' },
+
+            // ── Orage (très courant en saison des pluies) ─────────────
+            95: { icon: 'fa-cloud-bolt',            color: '#FFD700' }, // Orage modéré
+            96: { icon: 'fa-cloud-bolt',            color: '#FFC107' }, // Orage + grêle légère
+            99: { icon: 'fa-cloud-bolt',            color: '#FF8C00' }, // Orage + grêle forte
         };
 
-        function applyWeather(temp, iconCode) {
+        /** Fallback neutre si code WMO inconnu (ne jamais afficher fa-sun par défaut) */
+        const WEATHER_FALLBACK = { icon: 'fa-cloud', color: '#a8c4b8' };
+
+        function applyWeather(temp, iconCode, iconColor) {
             document.getElementById('temperature').textContent = `${Math.round(temp)}°C`;
             const weatherIconEl = document.getElementById('weather-icon');
             if (weatherIconEl) {
-                weatherIconEl.innerHTML = `<i class="fas ${iconCode}"></i>`;
+                weatherIconEl.innerHTML = `<i class="fas ${iconCode}" style="color:#ffffff"></i>`;
             }
         }
 
@@ -147,8 +203,8 @@
             try {
                 const cached = localStorage.getItem('pyramid_weather');
                 if (!cached) return false;
-                const { temp, icon, timestamp } = JSON.parse(cached);
-                applyWeather(temp, icon);
+                const { temp, icon, color } = JSON.parse(cached);
+                applyWeather(temp, icon, color || '#ffffff');
                 return true;
             } catch { return false; }
         }
@@ -161,11 +217,12 @@
                 );
                 const data = await response.json();
                 const weather = data.current_weather;
-                const iconCode = WEATHER_ICONS[weather.weathercode] || 'fa-sun';
-                applyWeather(weather.temperature, iconCode);
+                const entry = WEATHER_ICONS[weather.weathercode] ?? WEATHER_FALLBACK;
+                applyWeather(weather.temperature, entry.icon, entry.color);
                 localStorage.setItem('pyramid_weather', JSON.stringify({
-                    temp: weather.temperature,
-                    icon: iconCode,
+                    temp:  weather.temperature,
+                    icon:  entry.icon,
+                    color: entry.color,
                     timestamp: Date.now()
                 }));
             } catch (error) {
@@ -173,7 +230,7 @@
                 if (!loadCachedWeather()) {
                     document.getElementById('temperature').textContent = '--°C';
                     const weatherIconEl = document.getElementById('weather-icon');
-                    if (weatherIconEl) weatherIconEl.innerHTML = '<i class="fas fa-cloud-slash"></i>';
+                    if (weatherIconEl) weatherIconEl.innerHTML = '<i class="fas fa-cloud-slash" style="color:#ffffff"></i>';
                 }
             }
         }
@@ -1161,13 +1218,13 @@
                     <span class="text-[9px] font-headline uppercase text-white tracking-wider">Nuit étoilée</span>
                 </div>
             </div>
-            <!-- Forêt sombre -->
+            <!-- Forêt -->
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative group flex-shrink-0"
-                data-bg="assets/backgrounds/dark-forest.jpg">
-                <img src="assets/backgrounds/dark-forest.jpg" alt="Forêt sombre" class="w-full h-full object-cover">
+                data-bg="assets/backgrounds/forest.jpg">
+                <img src="assets/backgrounds/forest.jpg" alt="Forêt" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
                 <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
-                    <span class="text-[9px] font-headline uppercase text-white tracking-wider">Forêt sombre</span>
+                    <span class="text-[9px] font-headline uppercase text-white tracking-wider">Forêt</span>
                 </div>
             </div>
             <!-- Plage -->
@@ -1195,15 +1252,6 @@
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
                 <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
                     <span class="text-[9px] font-headline uppercase text-white tracking-wider">Nature</span>
-                </div>
-            </div>
-            <!-- Forêt -->
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative group flex-shrink-0"
-                data-bg="assets/backgrounds/forest.jpg">
-                <img src="assets/backgrounds/forest.jpg" alt="Forêt" class="w-full h-full object-cover">
-                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
-                    <span class="text-[9px] font-headline uppercase text-white tracking-wider">Forêt</span>
                 </div>
             </div>
             <!-- Prairie -->
@@ -1244,8 +1292,8 @@
             </div>
             <!-- Mont Cameroun -->
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative group flex-shrink-0"
-                data-bg="assets/backgrounds/Mont-Cameroun.jpg">
-                <img src="assets/backgrounds/Mont-Cameroun.jpg" alt="Mont Cameroun" class="w-full h-full object-cover">
+                data-bg="assets/backgrounds/Mont-Cameroun.png">
+                <img src="assets/backgrounds/Mont-Cameroun.png" alt="Mont Cameroun" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
                 <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
                     <span class="text-[9px] font-headline uppercase text-white tracking-wider">Mont Cameroun</span>
@@ -1253,8 +1301,8 @@
             </div>
             <!-- Monts Mandara -->
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative group flex-shrink-0"
-                data-bg="assets/backgrounds/Monts Mandara.jpeg">
-                <img src="assets/backgrounds/Monts Mandara.jpeg" alt="Monts Mandara" class="w-full h-full object-cover">
+                data-bg="assets/backgrounds/Monts Mandara.png">
+                <img src="assets/backgrounds/Monts Mandara.png" alt="Monts Mandara" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
                 <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
                     <span class="text-[9px] font-headline uppercase text-white tracking-wider">Monts Mandara</span>
@@ -1271,8 +1319,8 @@
             </div>
             <!-- Parc de la Mefou -->
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative group flex-shrink-0"
-                data-bg="assets/backgrounds/Parc de la Mefou.webp">
-                <img src="assets/backgrounds/Parc de la Mefou.webp" alt="Parc de la Mefou" class="w-full h-full object-cover">
+                data-bg="assets/backgrounds/Parc de la Mefou.png">
+                <img src="assets/backgrounds/Parc de la Mefou.png" alt="Parc de la Mefou" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
                 <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
                     <span class="text-[9px] font-headline uppercase text-white tracking-wider">Parc de la Mefou</span>
