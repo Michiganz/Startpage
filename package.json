@@ -1,20 +1,13 @@
 {
   "name": "startpage",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Pyramid Startpage - Lightweight browsing portal",
+  "main": "index.html",
   "scripts": {
-    "build:css": "tailwindcss -i ./input.css -o ./style.css --minify",
-    "watch:css": "tailwindcss -i ./input.css -o ./style.css --watch",
+    "start": "npx serve .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["startpage", "browser", "portal"],
   "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "devDependencies": {
-    "autoprefixer": "^10.4.27",
-    "postcss": "^8.5.8",
-    "tailwindcss": "^3.4.19"
-  }
+  "license": "ISC"
 }

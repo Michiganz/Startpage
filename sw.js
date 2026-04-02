@@ -1,15 +1,14 @@
 /* ============================================================
    Pyramid Browser — Service Worker
-   Gère le cache hors-ligne : polices, CSS, HTML, fonds d'écran
+   Gère le cache hors-ligne : HTML, images, logos
+   Note: Les CDN (Tailwind, Font Awesome, Google Fonts) nécessitent une connexion
    ============================================================ */
 
-const CACHE_NAME = 'pyramid-v3';
+const CACHE_NAME = 'pyramid-v4-cdn';
 
 /* Ressources mises en cache immédiatement à l'installation */
 const PRECACHE_ASSETS = [
-    './new_tab.html',
-    './style.css',
-    './fonts/fonts.css',
+    './index.html',
     './assets/backgrounds/mountain.jpg',
     './assets/backgrounds/waterfall.jpg',
     './assets/backgrounds/landscape.jpg',
@@ -20,7 +19,14 @@ const PRECACHE_ASSETS = [
     './assets/backgrounds/nature.jpg',
     './assets/backgrounds/forest.jpg',
     './assets/backgrounds/meadow.jpg',
-    /* Les fichiers woff2 sont mis en cache dynamiquement */
+    './assets/logo/Primatures.png',
+    './assets/logo/minfi cm.png',
+    './assets/logo/minedub.png',
+    './assets/logo/minsante.png',
+    './assets/logo/douanes.png',
+    './assets/logo/logo-dgt-dgi.png',
+    './assets/logo/icon-pyramid-play-white.svg',
+    './assets/logo/Icon-PyramidMail.svg',
 ];
 
 /* ── Installation ─────────────────────────────────────────── */
@@ -77,16 +83,16 @@ self.addEventListener('fetch', event => {
             /* Pas en cache — fetch network */
             return fetch(event.request)
                 .then(response => {
-                    /* Mettre en cache si réponse valide */
+                    /* Mettre en cache si réponse valide (uniquement ressources locales) */
                     if (response && response.status === 200) {
-                        const shouldCache =
-                            url.hostname === 'fonts.gstatic.com' ||
+                        const isLocalResource =
+                            url.origin === self.location.origin ||
                             url.pathname.includes('.woff2') ||
                             url.pathname.includes('.css') ||
-                            url.pathname.includes('new_tab.html') ||
-                            url.pathname.includes('assets/backgrounds');
+                            url.pathname.includes('index.html') ||
+                            url.pathname.includes('assets/');
 
-                        if (shouldCache) {
+                        if (isLocalResource) {
                             const clone = response.clone();
                             caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
                         }
@@ -96,7 +102,7 @@ self.addEventListener('fetch', event => {
                 .catch(() => {
                     /* Fallback ultime pour le HTML */
                     if (event.request.headers.get('accept')?.includes('text/html')) {
-                        return caches.match('./new_tab.html');
+                        return caches.match('./index.html');
                     }
                     return new Response('Ressource non disponible hors-ligne', {
                         status: 503,
