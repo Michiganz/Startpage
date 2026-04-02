@@ -566,6 +566,7 @@
             const shortcutName = document.getElementById('shortcutName');
             const shortcutUrl = document.getElementById('shortcutUrl');
             const siteGrid = document.getElementById('siteGrid');
+            const MAX_SHORTCUTS = 7;
 
             function loadShortcuts() {
                 try { return JSON.parse(localStorage.getItem('pyramid_shortcuts') || '[]'); }
@@ -573,6 +574,14 @@
             }
             function saveShortcuts(arr) {
                 localStorage.setItem('pyramid_shortcuts', JSON.stringify(arr));
+            }
+            function updateAddButtonVisibility() {
+                const shortcuts = loadShortcuts();
+                if (shortcuts.length >= MAX_SHORTCUTS) {
+                    addBtn.style.display = 'none';
+                } else {
+                    addBtn.style.display = 'flex';
+                }
             }
             function renderShortcuts() {
                 document.querySelectorAll('.user-shortcut').forEach(el => el.remove());
@@ -597,6 +606,9 @@
                     // Insérer avant le bouton Ajouter
                     siteGrid.insertBefore(a, addShortcutBtn);
                 });
+
+                // Mettre à jour la visibilité du bouton Ajouter
+                updateAddButtonVisibility();
 
                 // Gestion des menus contextuels
                 document.querySelectorAll('.shortcut-menu-btn').forEach(btn => {
@@ -718,6 +730,11 @@
             }
 
             addBtn.addEventListener('click', () => {
+                const shortcuts = loadShortcuts();
+                if (shortcuts.length >= MAX_SHORTCUTS) {
+                    alert('Maximum de 7 raccourcis atteint. Supprimez un raccourci existant pour en ajouter un nouveau.');
+                    return;
+                }
                 shortcutModal.classList.remove('hidden');
                 shortcutModal.classList.add('flex');
                 shortcutName.focus();
@@ -1243,80 +1260,71 @@
             </div>
         </section>
 
-        <!-- Grille des sites -->
-        <section class="mt-12 w-full max-w-6xl px-8 pb-32">
-            <div id="siteGrid" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 md:gap-6 items-center justify-items-center">
-
+        <!-- Sites Partenaires -->
+        <section class="mt-12 w-full max-w-6xl px-8 pb-4">
+            <div id="partnerGrid" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 md:gap-6 items-center justify-items-center">
                 <!-- Camtel -->
                 <a href="https://www.camtel.cm" target="_blank" rel="noopener"
-                    class="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-surface-container-low border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex flex-col items-center justify-center gap-1 md:gap-2 p-2 md:p-3">
-                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white flex items-center justify-center overflow-hidden">
-                        <img src="assets/logo/Camtel.png" 
-                             onerror="this.src='assets/logo/Camtel.png';this.onerror=null;" 
-                             class="w-6 h-6 md:w-8 md:h-8 object-contain">
-                    </div>
-                    <span class="text-[10px] md:text-xs font-label tracking-wide text-on-surface-variant group-hover:text-primary text-center leading-tight">Camtel</span>
+                    class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                    title="Camtel">
+                    <img src="assets/logo/Camtel.png"
+                         onerror="this.src='assets/logo/Camtel.png';this.onerror=null;"
+                         class="w-full h-full object-contain">
                 </a>
                 <!-- Source du Pays -->
                 <a href="https://sourcedupays.com" target="_blank" rel="noopener"
-                    class="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-surface-container-low border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex flex-col items-center justify-center gap-1 md:gap-2 p-2 md:p-3">
-                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white flex items-center justify-center overflow-hidden">
-                        <img src="https://www.google.com/s2/favicons?sz=64&domain=sourcedupays.com" 
-                             onerror="this.src='assets/logo/Source du Pays.png';this.onerror=null;" 
-                             class="w-6 h-6 md:w-8 md:h-8 object-contain">
-                    </div>
-                    <span class="text-[10px] md:text-xs font-label tracking-wide text-on-surface-variant group-hover:text-primary text-center leading-tight">Source du Pays</span>
+                    class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                    title="Source du Pays">
+                    <img src="https://www.google.com/s2/favicons?sz=128&domain=sourcedupays.com"
+                         onerror="this.src='assets/logo/Source du Pays.png';this.onerror=null;"
+                         class="w-full h-full object-contain">
                 </a>
                 <!-- CYBERIX -->
                 <a href="https://www.cyberix.fr" target="_blank" rel="noopener"
-                    class="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-surface-container-low border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex flex-col items-center justify-center gap-1 md:gap-2 p-2 md:p-3">
-                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white flex items-center justify-center overflow-hidden">
-                        <img src="https://www.google.com/s2/favicons?sz=64&domain=www.cyberix.fr" 
-                             onerror="this.src='assets/logo/Cyberix.png';this.onerror=null;" 
-                             class="w-6 h-6 md:w-8 md:h-8 object-contain">
-                    </div>
-                    <span class="text-[10px] md:text-xs font-label tracking-wide text-on-surface-variant group-hover:text-primary text-center leading-tight">Cyberix</span>
+                    class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                    title="Cyberix">
+                    <img src="https://www.google.com/s2/favicons?sz=128&domain=www.cyberix.fr"
+                         onerror="this.src='assets/logo/Cyberix.png';this.onerror=null;"
+                         class="w-full h-full object-contain">
                 </a>
                 <!-- Maviance -->
                 <a href="https://maviance.cm/" target="_blank" rel="noopener"
-                    class="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-surface-container-low border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex flex-col items-center justify-center gap-1 md:gap-2 p-2 md:p-3">
-                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white flex items-center justify-center overflow-hidden">
-                        <img src="https://www.google.com/s2/favicons?sz=64&domain=maviance.cm" 
-                             onerror="this.src='assets/logo/maviance.png';this.onerror=null;" 
-                             class="w-6 h-6 md:w-8 md:h-8 object-contain">
-                    </div>
-                    <span class="text-[10px] md:text-xs font-label tracking-wide text-on-surface-variant group-hover:text-primary text-center leading-tight">Maviance</span>
+                    class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                    title="Maviance">
+                    <img src="https://www.google.com/s2/favicons?sz=128&domain=maviance.cm"
+                         onerror="this.src='assets/logo/maviance.png';this.onerror=null;"
+                         class="w-full h-full object-contain">
                 </a>
                  <!-- Port autonome de Kribi-->
                  <a href="https://pak.cm/" target="_blank" rel="noopener"
-                    class="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-surface-container-low border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex flex-col items-center justify-center gap-1 md:gap-2 p-2 md:p-3">
-                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white flex items-center justify-center overflow-hidden">
-                        <img src="assets/logo/Port autonome Kribi.png" 
-                             onerror="this.src='assets/logo/Port autonome Kribi.png';this.onerror=null;" 
-                             class="w-6 h-6 md:w-8 md:h-8 object-contain">
-                    </div>
-                    <span class="text-[10px] md:text-xs font-label tracking-wide text-on-surface-variant group-hover:text-primary text-center leading-tight">Port de Kribi</span>
+                    class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                    title="Port de Kribi">
+                    <img src="https://www.google.com/s2/favicons?sz=128&domain=pak.cm"
+                         onerror="this.src='assets/logo/Port autonome Kribi.png';this.onerror=null;"
+                         class="w-full h-full object-contain">
                 </a>
                  <!-- Nexah -->
                  <a href="https://www.nexah.net/" target="_blank" rel="noopener"
-                    class="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-surface-container-low border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex flex-col items-center justify-center gap-1 md:gap-2 p-2 md:p-3">
-                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white flex items-center justify-center overflow-hidden">
-                        <img src="https://www.google.com/s2/favicons?sz=64&domain=www.nexah.net" 
-                             onerror="this.src='assets/logo/nexah.png';this.onerror=null;" 
-                             class="w-6 h-6 md:w-8 md:h-8 object-contain">
-                    </div>
-                    <span class="text-[10px] md:text-xs font-label tracking-wide text-on-surface-variant group-hover:text-primary text-center leading-tight">Nexah</span>
+                    class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                    title="Nexah">
+                    <img src="https://www.google.com/s2/favicons?sz=128&domain=www.nexah.net"
+                         onerror="this.src='assets/logo/nexah.png';this.onerror=null;"
+                         class="w-full h-full object-contain">
                 </a>
                  <!-- Tara -->
                  <a href="https://taramoney.com/" target="_blank" rel="noopener"
-                    class="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-surface-container-low border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex flex-col items-center justify-center gap-1 md:gap-2 p-2 md:p-3">
-                    <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white flex items-center justify-center overflow-hidden">
-                        <img src="https://www.google.com/s2/favicons?sz=64&domain=taramoney.com" 
-                             onerror="this.src='assets/logo/Tara.png';this.onerror=null;" 
-                             class="w-6 h-6 md:w-8 md:h-8 object-contain">
-                    </div>
-                    <span class="text-[10px] md:text-xs font-label tracking-wide text-on-surface-variant group-hover:text-primary text-center leading-tight">Tara</span>
+                    class="w-12 h-12 md:w-14 md:h-14 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                    title="Tara">
+                    <img src="https://www.google.com/s2/favicons?sz=128&domain=taramoney.com"
+                         onerror="this.src='assets/logo/Tara.png';this.onerror=null;"
+                         class="w-full h-full object-contain">
                 </a>
+            </div>
+        </section>
+
+        <!-- Raccourcis Utilisateur -->
+        <section class="w-full max-w-6xl px-8 pb-32">
+            <div id="siteGrid" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4 md:gap-6 items-center justify-items-center">
                 <!-- Bouton Ajouter -->
                 <button id="addShortcutBtn" class="w-20 h-20 md:w-24 md:h-24 rounded-xl bg-surface-container-low border-2 border-dashed border-primary/20 flex flex-col items-center justify-center gap-1 md:gap-2 hover:bg-primary/5 hover:border-primary/60 group card-hover" style="transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;">
                     <div class="w-8 h-8 md:w-9 md:h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 shadow-primary-glow" style="transition: transform 0.2s ease;">
