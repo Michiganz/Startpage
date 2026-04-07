@@ -5,7 +5,6 @@
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Nouvel onglet</title>
-    <!-- Service Worker pour le mode hors-ligne -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -15,7 +14,6 @@
             });
         }
     </script>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -51,271 +49,237 @@
             }
         }
     </script>
-    <!-- Google Fonts CDN -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@200;300;400;500;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome CDN -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <!-- Material Symbols CDN -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-    
-    <script>
-        const DEFAULT_LOCATION = {
-            city: 'Douala',
-            country: 'CM',
-            lat: 4.0511,
-            lon: 9.7679
-        };
 
+    <script>
+        const DEFAULT_LOCATION = { city: 'Douala', country: 'CM', lat: 4.0511, lon: 9.7679 };
         let userLocation = { ...DEFAULT_LOCATION };
 
-        // Charger la position depuis le cache
+        /* ─── Cache coordonnées ─────────────────────────────────────────── */
         function loadCachedLocation() {
             try {
-                const cached = localStorage.getItem('pyramid_location');
-                if (!cached) return false;
-                const { lat, lon, timestamp } = JSON.parse(cached);
-                // Valider si le cache a moins de 24h
-                if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+                const c = localStorage.getItem('pyramid_location');
+                if (!c) return false;
+                const { lat, lon, timestamp } = JSON.parse(c);
+                if (Date.now() - timestamp < 86400000) {
                     userLocation = { ...DEFAULT_LOCATION, lat, lon };
                     return true;
                 }
                 return false;
             } catch { return false; }
         }
-
-        // Sauvegarder la position dans le cache
         function saveCachedLocation(lat, lon) {
-            localStorage.setItem('pyramid_location', JSON.stringify({
-                lat, lon, timestamp: Date.now()
-            }));
+            localStorage.setItem('pyramid_location', JSON.stringify({ lat, lon, timestamp: Date.now() }));
         }
 
-        // Obtenir la position via Géolocalisation
+        /* ─── Géolocalisation ───────────────────────────────────────────── */
         function getUserLocation() {
             return new Promise((resolve) => {
-                if (!navigator.geolocation) {
-                    resolve(DEFAULT_LOCATION);
-                    return;
-                }
+                if (!navigator.geolocation) { resolve(DEFAULT_LOCATION); return; }
                 navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const { latitude, longitude } = position.coords;
-                        saveCachedLocation(latitude, longitude);
-                        resolve({ ...DEFAULT_LOCATION, lat: latitude, lon: longitude });
+                    ({ coords: { latitude: lat, longitude: lon } }) => {
+                        saveCachedLocation(lat, lon);
+                        resolve({ ...DEFAULT_LOCATION, lat, lon });
                     },
-                    () => {
-                        // Si l'utilisateur refuse ou erreur, utiliser la position par défaut
-                        resolve(DEFAULT_LOCATION);
-                    },
+                    () => resolve(DEFAULT_LOCATION),
                     { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
                 );
             });
         }
 
+        /* ─── Géocodage inverse (Nominatim) ─────────────────────────────── */
+        async function reverseGeocode(lat, lon) {
+            try {
+                const c = localStorage.getItem('pyramid_location_name');
+                if (c) {
+                    const { city, country, timestamp } = JSON.parse(c);
+                    if (Date.now() - timestamp < 86400000) return { city, country };
+                }
+            } catch {}
+            try {
+                const res = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=fr`,
+                    { headers: { 'User-Agent': 'PyramidNewTab/1.0' } }
+                );
+                const data = await res.json();
+                const a = data.address || {};
+                const city    = a.city || a.town || a.village || a.municipality || a.county || DEFAULT_LOCATION.city;
+                const country = a.country || 'Cameroun';
+                localStorage.setItem('pyramid_location_name', JSON.stringify({ city, country, timestamp: Date.now() }));
+                return { city, country };
+            } catch {
+                try {
+                    const c = localStorage.getItem('pyramid_location_name');
+                    if (c) { const { city, country } = JSON.parse(c); return { city, country }; }
+                } catch {}
+                return { city: DEFAULT_LOCATION.city, country: 'Cameroun' };
+            }
+        }
+
+        function updateLocationDisplay(city, country) {
+            const el = document.getElementById('location-display');
+            if (el) el.textContent = `${city}, ${country}`;
+        }
+
+        /* ─── Horloge ───────────────────────────────────────────────────── */
         function updateClock() {
             const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            document.getElementById('clock').textContent = `${hours}:${minutes}`;
-
-            const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-            const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+            const h = String(now.getHours()).padStart(2, '0');
+            const m = String(now.getMinutes()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${h}:${m}`;
+            const days   = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+            const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
             document.getElementById('date').textContent = `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]}`;
         }
 
-        /**
-         * Correspondance des codes WMO (Open-Meteo) → icône Font Awesome + couleur
-         * Codes complets : https://open-meteo.com/en/docs#weathervariables
-         *
-         * Contexte camerounais :
-         *  - Saison des pluies (avr–juin, sept–nov) : codes 61–82 et 95–99 très fréquents
-         *  - Harmattan (déc–fév) : codes 0–3, parfois 45 (brume sèche)
-         *  - Pas de neige en plaine — codes 71–77 quasi inexistants sauf Mont Cameroun
-         */
-        const WEATHER_ICONS = {
-            // ── Ciel dégagé ──────────────────────────────────────────
-            0:  { icon: 'fa-sun',                  color: '#FFD700' }, // Soleil franc
-
-            // ── Principalement dégagé / Partiellement nuageux ────────
-            1:  { icon: 'fa-cloud-sun',             color: '#FFC107' }, // Quelques nuages
-            2:  { icon: 'fa-cloud-sun',             color: '#F0A500' }, // Mi-nuageux
-
-            // ── Couvert ───────────────────────────────────────────────
-            3:  { icon: 'fa-cloud',                 color: '#a8c4b8' }, // Ciel gris uniforme
-
-            // ── Brouillard / Brume sèche (harmattan) ─────────────────
-            45: { icon: 'fa-smog',                  color: '#c8b89a' }, // Brouillard
-            48: { icon: 'fa-smog',                  color: '#b8a888' }, // Brouillard givrant (rare CM)
-
-            // ── Bruine (crachin : très courant à Douala) ─────────────
-            51: { icon: 'fa-cloud-rain',            color: '#90cce0' }, // Bruine légère
-            53: { icon: 'fa-cloud-rain',            color: '#60b0d0' }, // Bruine modérée
-            55: { icon: 'fa-cloud-rain',            color: '#3a98c0' }, // Bruine dense
-
-            // ── Bruine verglaçante (quasi inexistant au Cameroun) ─────
-            56: { icon: 'fa-cloud-rain',            color: '#60b0d0' },
-            57: { icon: 'fa-cloud-rain',            color: '#3a98c0' },
-
-            // ── Pluie ─────────────────────────────────────────────────
-            61: { icon: 'fa-cloud-rain',            color: '#7ec8e3' }, // Pluie légère
-            63: { icon: 'fa-cloud-showers-heavy',   color: '#4aa8c8' }, // Pluie modérée
-            65: { icon: 'fa-cloud-showers-heavy',   color: '#1a88a8' }, // Pluie forte
-
-            // ── Pluie verglaçante (quasi inexistant au Cameroun) ──────
-            66: { icon: 'fa-cloud-rain',            color: '#4aa8c8' },
-            67: { icon: 'fa-cloud-showers-heavy',   color: '#1a88a8' },
-
-            // ── Neige (seulement sommet Mont Cameroun ~4 095 m) ───────
-            71: { icon: 'fa-snowflake',             color: '#cce8ff' },
-            73: { icon: 'fa-snowflake',             color: '#b0d8ff' },
-            75: { icon: 'fa-snowflake',             color: '#90c8ff' },
-            77: { icon: 'fa-snowflake',             color: '#80b8f0' }, // Grésil
-
-            // ── Averses (saison des pluies au Cameroun) ───────────────
-            80: { icon: 'fa-cloud-rain',            color: '#7ec8e3' }, // Averse légère
-            81: { icon: 'fa-cloud-showers-heavy',   color: '#3a98c0' }, // Averse modérée
-            82: { icon: 'fa-cloud-showers-heavy',   color: '#0a6888' }, // Averse violente
-
-            // ── Averses de neige ──────────────────────────────────────
-            85: { icon: 'fa-snowflake',             color: '#b0d8ff' },
-            86: { icon: 'fa-snowflake',             color: '#90c8ff' },
-
-            // ── Orage (très courant en saison des pluies) ─────────────
-            95: { icon: 'fa-cloud-bolt',            color: '#FFD700' }, // Orage modéré
-            96: { icon: 'fa-cloud-bolt',            color: '#FFC107' }, // Orage + grêle légère
-            99: { icon: 'fa-cloud-bolt',            color: '#FF8C00' }, // Orage + grêle forte
+        /* ─── Descriptions WMO complètes en français ────────────────────── */
+        const WMO_DATA = {
+            0:  { desc: 'Ciel dégagé',           icon: 'fa-sun',                 color: '#FFD700' },
+            1:  { desc: 'Peu nuageux',            icon: 'fa-cloud-sun',           color: '#FFC107' },
+            2:  { desc: 'Partiellement nuageux',  icon: 'fa-cloud-sun',           color: '#F0A500' },
+            3:  { desc: 'Couvert',                icon: 'fa-cloud',               color: '#a8c4b8' },
+            45: { desc: 'Brouillard',             icon: 'fa-smog',                color: '#c8b89a' },
+            48: { desc: 'Brouillard givrant',     icon: 'fa-smog',                color: '#b8a888' },
+            51: { desc: 'Bruine légère',          icon: 'fa-cloud-rain',          color: '#90cce0' },
+            53: { desc: 'Bruine modérée',         icon: 'fa-cloud-rain',          color: '#60b0d0' },
+            55: { desc: 'Bruine dense',           icon: 'fa-cloud-rain',          color: '#3a98c0' },
+            56: { desc: 'Bruine verglaçante',     icon: 'fa-cloud-rain',          color: '#60b0d0' },
+            57: { desc: 'Bruine verglaçante forte',icon: 'fa-cloud-rain',         color: '#3a98c0' },
+            61: { desc: 'Pluie légère',           icon: 'fa-cloud-rain',          color: '#7ec8e3' },
+            63: { desc: 'Pluie modérée',          icon: 'fa-cloud-showers-heavy', color: '#4aa8c8' },
+            65: { desc: 'Pluie forte',            icon: 'fa-cloud-showers-heavy', color: '#1a88a8' },
+            66: { desc: 'Pluie verglaçante',      icon: 'fa-cloud-rain',          color: '#4aa8c8' },
+            67: { desc: 'Pluie verglaçante forte',icon: 'fa-cloud-showers-heavy', color: '#1a88a8' },
+            71: { desc: 'Neige légère',           icon: 'fa-snowflake',           color: '#cce8ff' },
+            73: { desc: 'Neige modérée',          icon: 'fa-snowflake',           color: '#b0d8ff' },
+            75: { desc: 'Neige forte',            icon: 'fa-snowflake',           color: '#90c8ff' },
+            77: { desc: 'Grains de neige',        icon: 'fa-snowflake',           color: '#80b8f0' },
+            80: { desc: 'Averses légères',        icon: 'fa-cloud-rain',          color: '#7ec8e3' },
+            81: { desc: 'Averses modérées',       icon: 'fa-cloud-showers-heavy', color: '#3a98c0' },
+            82: { desc: 'Averses violentes',      icon: 'fa-cloud-showers-heavy', color: '#0a6888' },
+            85: { desc: 'Averses de neige',       icon: 'fa-snowflake',           color: '#b0d8ff' },
+            86: { desc: 'Averses de neige forte', icon: 'fa-snowflake',           color: '#90c8ff' },
+            95: { desc: 'Orage',                  icon: 'fa-cloud-bolt',          color: '#FFD700' },
+            96: { desc: 'Orage avec grêle',       icon: 'fa-cloud-bolt',          color: '#FFC107' },
+            99: { desc: 'Orage violent',          icon: 'fa-cloud-bolt',          color: '#FF8C00' },
         };
+        const WMO_FALLBACK = { desc: 'Nuageux', icon: 'fa-cloud', color: '#a8c4b8' };
 
-        /** Fallback neutre si code WMO inconnu (ne jamais afficher fa-sun par défaut) */
-        const WEATHER_FALLBACK = { icon: 'fa-cloud', color: '#a8c4b8' };
+        function getWMO(code) {
+            return WMO_DATA[code] || WMO_FALLBACK;
+        }
 
-        function applyWeather(temp, iconCode, iconColor) {
+        /* ─── Applique les données météo au widget ──────────────────────── */
+        function applyWeather(temp, feel, hum, wind, code) {
+            const wmo = getWMO(code);
+            // Température
             document.getElementById('temperature').textContent = `${Math.round(temp)}°C`;
-            const weatherIconEl = document.getElementById('weather-icon');
-            if (weatherIconEl) {
-                weatherIconEl.innerHTML = `<i class="fas ${iconCode}" style="color:#ffffff"></i>`;
+            // Icône
+            const iconEl = document.getElementById('weather-icon');
+            if (iconEl) iconEl.innerHTML = `<i class="fas ${wmo.icon}" style="color:#ffffff"></i>`;
+            // Description
+            const descEl = document.getElementById('weather-desc');
+            if (descEl) descEl.textContent = wmo.desc;
+            // Méta : humidité, vent, ressenti
+            const metaEl = document.getElementById('weather-meta');
+            if (metaEl) {
+                metaEl.innerHTML = `
+                    <span><i class="fas fa-droplet" style="font-size:7px"></i> ${Math.round(hum)}%</span>
+                    <span><i class="fas fa-wind" style="font-size:7px"></i> ${Math.round(wind)} km/h</span>
+                    <span><i class="fas fa-thermometer-half" style="font-size:7px"></i> ${Math.round(feel)}°</span>
+                `;
             }
         }
 
+        /* ─── Cache météo (10 min) ──────────────────────────────────────── */
         function loadCachedWeather() {
             try {
-                const cached = localStorage.getItem('pyramid_weather');
-                if (!cached) return false;
-                const { temp, icon, color } = JSON.parse(cached);
-                applyWeather(temp, icon, color || '#ffffff');
-                return true;
+                const c = localStorage.getItem('pyramid_weather');
+                if (!c) return false;
+                const { temp, feel, hum, wind, code, timestamp } = JSON.parse(c);
+                if (Date.now() - timestamp < 600000) {
+                    applyWeather(temp, feel ?? temp, hum ?? 0, wind ?? 0, code ?? 0);
+                    return true;
+                }
+                return false;
             } catch { return false; }
         }
 
+        /* ─── Fetch météo Open-Meteo (données complètes) ────────────────── */
         async function fetchWeather() {
             loadCachedWeather();
             try {
-                const response = await fetch(
-                    `https://api.open-meteo.com/v1/forecast?latitude=${userLocation.lat}&longitude=${userLocation.lon}&current_weather=true`
+                const res = await fetch(
+                    `https://api.open-meteo.com/v1/forecast` +
+                    `?latitude=${userLocation.lat}&longitude=${userLocation.lon}` +
+                    `&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code` +
+                    `&wind_speed_unit=kmh&timezone=auto`
                 );
-                const data = await response.json();
-                const weather = data.current_weather;
-                const entry = WEATHER_ICONS[weather.weathercode] ?? WEATHER_FALLBACK;
-                applyWeather(weather.temperature, entry.icon, entry.color);
+                const data = await res.json();
+                const c = data.current;
+                const temp = c.temperature_2m;
+                const feel = c.apparent_temperature;
+                const hum  = c.relative_humidity_2m;
+                const wind = c.wind_speed_10m;
+                const code = c.weather_code;
+                applyWeather(temp, feel, hum, wind, code);
                 localStorage.setItem('pyramid_weather', JSON.stringify({
-                    temp:  weather.temperature,
-                    icon:  entry.icon,
-                    color: entry.color,
-                    timestamp: Date.now()
+                    temp, feel, hum, wind, code, timestamp: Date.now()
                 }));
-            } catch (error) {
+            } catch {
                 console.warn('[Météo] Hors-ligne — affichage du cache');
                 if (!loadCachedWeather()) {
                     document.getElementById('temperature').textContent = '--°C';
-                    const weatherIconEl = document.getElementById('weather-icon');
-                    if (weatherIconEl) weatherIconEl.innerHTML = '<i class="fas fa-cloud-slash" style="color:#ffffff"></i>';
+                    const el = document.getElementById('weather-icon');
+                    if (el) el.innerHTML = '<i class="fas fa-cloud-slash" style="color:#ffffff"></i>';
+                    const d = document.getElementById('weather-desc');
+                    if (d) d.textContent = 'Indisponible';
                 }
             }
         }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            const bgImage = document.getElementById('bgImage');
-            const customBtn = document.getElementById('customBtn');
+        document.addEventListener('DOMContentLoaded', function () {
+
+            /* ── Thèmes ─────────────────────────────────────────────────── */
+            const bgImage    = document.getElementById('bgImage');
+            const customBtn  = document.getElementById('customBtn');
             const themePanel = document.getElementById('themePanel');
             const closePanel = document.getElementById('closePanel');
             const items = document.querySelectorAll('.theme-item');
-
             let isOpen = false;
 
             function applySolidBackground() {
-                const solidBg = document.getElementById('solidBg');
+                const sb = document.getElementById('solidBg');
                 bgImage.style.opacity = '0';
-                solidBg.style.background = 'linear-gradient(135deg, #0a0f0d 0%, #121c17 100%)';
-                solidBg.querySelector('div').style.background = 'rgba(7, 169, 104, 0.20)';
-                solidBg.style.opacity = '1';
+                sb.style.background = 'linear-gradient(135deg, #0a0f0d 0%, #121c17 100%)';
+                sb.querySelector('div').style.background = 'rgba(7,169,104,0.20)';
+                sb.style.opacity = '1';
             }
-
-            customBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                isOpen = !isOpen;
-                themePanel.style.transform = isOpen ? 'translateY(0)' : 'translateY(100%)';
-            });
-
-            closePanel.addEventListener('click', () => {
-                isOpen = false;
-                themePanel.style.transform = 'translateY(100%)';
-            });
-
-            document.addEventListener('click', (e) => {
-                if (isOpen && !themePanel.contains(e.target) && !customBtn.contains(e.target)) {
-                    isOpen = false;
-                    themePanel.style.transform = 'translateY(100%)';
-                }
-            });
+            customBtn.addEventListener('click', e => { e.stopPropagation(); isOpen = !isOpen; themePanel.style.transform = isOpen ? 'translateY(0)' : 'translateY(100%)'; });
+            closePanel.addEventListener('click', () => { isOpen = false; themePanel.style.transform = 'translateY(100%)'; });
+            document.addEventListener('click', e => { if (isOpen && !themePanel.contains(e.target) && !customBtn.contains(e.target)) { isOpen = false; themePanel.style.transform = 'translateY(100%)'; } });
 
             const savedTheme = localStorage.getItem('selectedTheme');
-            const solidBg = document.getElementById('solidBg');
-
-            if (!savedTheme) {
-                applySolidBackground();
-                const noneItem = document.querySelector('.theme-item[data-bg="none"]');
-                if (noneItem) {
-                    noneItem.classList.add('active');
-                }
-            } else {
-                if (savedTheme === 'none') {
-                    applySolidBackground();
-                } else {
-                    solidBg.style.opacity = '0';
-                    bgImage.src = savedTheme;
-                    bgImage.style.opacity = '0.6';
-                }
-            }
+            const solidBg    = document.getElementById('solidBg');
+            if (!savedTheme) { applySolidBackground(); document.querySelector('.theme-item[data-bg="none"]')?.classList.add('active'); }
+            else if (savedTheme === 'none') { applySolidBackground(); }
+            else { solidBg.style.opacity = '0'; bgImage.src = savedTheme; bgImage.style.opacity = '0.6'; }
 
             items.forEach(item => {
                 const bg = item.getAttribute('data-bg');
-
-                if (bg === savedTheme) {
-                    item.classList.add('active');
-                }
-
+                if (bg === savedTheme) item.classList.add('active');
                 item.addEventListener('click', () => {
                     items.forEach(i => i.classList.remove('active'));
                     item.classList.add('active');
-
-                    if (bg === 'none') {
-                        applySolidBackground();
-                        localStorage.setItem('selectedTheme', 'none');
-                    } else {
-                        const solidBg = document.getElementById('solidBg');
+                    if (bg === 'none') { applySolidBackground(); localStorage.setItem('selectedTheme', 'none'); }
+                    else {
                         solidBg.style.opacity = '0';
-
-                        bgImage.style.opacity = "0";
-                        bgImage.style.transform = "scale(1.05)";
-
-                        setTimeout(() => {
-                            bgImage.src = bg;
-                            bgImage.style.opacity = "0.6";
-                            bgImage.style.transform = "scale(1)";
-                        }, 200);
-
+                        bgImage.style.opacity = '0'; bgImage.style.transform = 'scale(1.05)';
+                        setTimeout(() => { bgImage.src = bg; bgImage.style.opacity = '0.6'; bgImage.style.transform = 'scale(1)'; }, 200);
                         localStorage.setItem('selectedTheme', bg);
                     }
                 });
@@ -324,623 +288,362 @@
             document.body.classList.add('loaded');
             updateClock();
 
-            // Initialiser la géolocalisation puis la météo
+            /* ── Init localisation + météo ──────────────────────────────── */
             (async function initLocationAndWeather() {
+                try {
+                    const c = localStorage.getItem('pyramid_location_name');
+                    if (c) { const { city, country } = JSON.parse(c); updateLocationDisplay(city, country); }
+                } catch {}
+
                 if (!loadCachedLocation()) {
-                    await getUserLocation();
+                    const loc = await getUserLocation();
+                    userLocation = loc;
                 }
+
                 fetchWeather();
+                reverseGeocode(userLocation.lat, userLocation.lon)
+                    .then(({ city, country }) => updateLocationDisplay(city, country));
             })();
-            
+
             setInterval(updateClock, 1000);
             setInterval(fetchWeather, 600000);
 
-            // ===== CAROUSEL — Desktop: duplication pour boucle infinie CSS =====
-            (function() {
+            /* ── Carousel infini avec flèches ───────────────────────────── */
+            (function () {
                 const track = document.getElementById('carousel-track');
-                if (!track) return;
+                const vp    = document.getElementById('carousel-viewport');
+                if (!track || !vp) return;
 
-                const isMobile = () => window.innerWidth <= 768;
+                // Récupère les items originaux
+                const originals  = Array.from(track.querySelectorAll('.carousel-item'));
+                const ORIG_COUNT = originals.length;
+                if (ORIG_COUNT === 0) return;
 
-                /* ─── Desktop : dupliquer les items pour l'animation CSS infinie ─── */
-                function initDesktop() {
-                    if (track.dataset.cloned) return;
-                    track.dataset.cloned = '1';
-                    Array.from(track.querySelectorAll('.carousel-item')).forEach(item => {
-                        const clone = item.cloneNode(true);
-                        clone.setAttribute('aria-hidden', 'true');
-                        track.appendChild(clone);
-                    });
-                }
+                // Triple clonage : [clone avant] [originaux] [clone après]
+                originals.forEach(el => {
+                    const before = el.cloneNode(true); before.setAttribute('aria-hidden', 'true');
+                    track.insertBefore(before, track.firstChild);
+                });
+                originals.forEach(el => {
+                    const after = el.cloneNode(true); after.setAttribute('aria-hidden', 'true');
+                    track.appendChild(after);
+                });
 
-                /* ─── Mobile : drag souris + swipe tactile + flèches ─── */
-                function initMobile() {
-                    if (track.dataset.mobileInit) return;
-                    track.dataset.mobileInit = '1';
+                const GAP    = 18; // doit correspondre au gap CSS
+                const ITEM_W = () => {
+                    const first = track.querySelector('.carousel-item');
+                    return first ? first.offsetWidth + GAP : 62;
+                };
+                const CLONE_W = () => ORIG_COUNT * ITEM_W();
 
-                    const viewport = document.getElementById('carousel-viewport');
-                    const prevBtn  = document.getElementById('carousel-prev');
-                    const nextBtn  = document.getElementById('carousel-next');
-                    const items    = Array.from(track.querySelectorAll('.carousel-item'));
-                    const GAP      = 14; // px — correspond au gap CSS mobile (0.9rem ≈ 14px)
+                let pos     = 0;
+                let speed   = 0.55;   // px / frame auto-scroll
+                let isAuto  = true;
+                let isDrag  = false;
+                let dragSX  = 0, dragSPos = 0;
+                let didDrag = false;
 
-                    let currentIdx = 0;
-                    let startX = 0, startY = 0, currentX = 0;
-                    let isDragging = false;
-                    let dragDelta = 0;
-                    let baseOffset = 0; // offset actuel en px (valeur negative)
-                    let hasDragged = false;
-
-                    function itemWidth() {
-                        return items[0] ? items[0].offsetWidth + GAP : 64;
-                    }
-
-                    function maxOffset() {
-                        return -(items.length - 1) * itemWidth();
-                    }
-
-                    function clamp(val, min, max) {
-                        return Math.min(Math.max(val, min), max);
-                    }
-
-                    function applyOffset(offset, animate) {
-                        track.classList.toggle('is-dragging', !animate);
-                        track.style.transform = `translateX(${offset}px)`;
-                    }
-
-                    function snapTo(idx) {
-                        currentIdx = clamp(idx, 0, items.length - 1);
-                        baseOffset = -currentIdx * itemWidth();
-                        applyOffset(baseOffset, true);
-                        updateArrows();
-                    }
-
-                    function updateArrows() {
-                        prevBtn.disabled = currentIdx === 0;
-                        nextBtn.disabled = currentIdx >= items.length - 1;
-                    }
-
-                    // ── Pointer Events (souris + stylet) ──
-                    viewport.addEventListener('pointerdown', (e) => {
-                        if (!isMobile()) return;
-                        isDragging = true;
-                        hasDragged = false;
-                        startX = e.clientX;
-                        startY = e.clientY;
-                        dragDelta = 0;
-                        viewport.setPointerCapture(e.pointerId);
-                        viewport.classList.add('is-dragging');
-                        track.classList.add('is-dragging');
-                    });
-
-                    viewport.addEventListener('pointermove', (e) => {
-                        if (!isDragging || !isMobile()) return;
-                        dragDelta = e.clientX - startX;
-                        const verticalDelta = Math.abs(e.clientY - startY);
-                        // Si scroll vertical dominant → ignorer
-                        if (!hasDragged && verticalDelta > Math.abs(dragDelta)) {
-                            isDragging = false;
-                            viewport.classList.remove('is-dragging');
-                            track.classList.remove('is-dragging');
-                            return;
-                        }
-                        if (Math.abs(dragDelta) > 5) hasDragged = true;
-                        // Résistance aux bords
-                        let rawOffset = baseOffset + dragDelta;
-                        if (rawOffset > 0) rawOffset = rawOffset * 0.2;
-                        if (rawOffset < maxOffset()) rawOffset = maxOffset() + (rawOffset - maxOffset()) * 0.2;
-                        applyOffset(rawOffset, false);
-                    });
-
-                    viewport.addEventListener('pointerup', (e) => {
-                        if (!isDragging || !isMobile()) return;
-                        isDragging = false;
-                        viewport.classList.remove('is-dragging');
-                        track.classList.remove('is-dragging');
-
-                        const SWIPE_THRESHOLD = 40; // px min pour changer de carte
-                        if (dragDelta < -SWIPE_THRESHOLD) {
-                            snapTo(currentIdx + 1);
-                        } else if (dragDelta > SWIPE_THRESHOLD) {
-                            snapTo(currentIdx - 1);
-                        } else {
-                            snapTo(currentIdx); // revenir à la position d'origine
-                        }
-                    });
-
-                    viewport.addEventListener('pointercancel', () => {
-                        isDragging = false;
-                        viewport.classList.remove('is-dragging');
-                        track.classList.remove('is-dragging');
-                        snapTo(currentIdx);
-                    });
-
-                    // ── Empêcher navigation sur les liens si l'user a dragué ──
-                    track.addEventListener('click', (e) => {
-                        if (hasDragged) e.preventDefault();
-                    }, true);
-
-                    // ── Touch Events (mobile tactile) ──
-                    let touchStartX = 0;
-                    let touchStartY = 0;
-                    let touchOffset = 0;
-
-                    viewport.addEventListener('touchstart', (e) => {
-                        if (!isMobile()) return;
-                        touchStartX = e.touches[0].clientX;
-                        touchStartY = e.touches[0].clientY;
-                        touchOffset = 0;
-                        hasDragged = false;
-                    }, { passive: true });
-
-                    viewport.addEventListener('touchmove', (e) => {
-                        if (!isMobile()) return;
-                        const dx = e.touches[0].clientX - touchStartX;
-                        const dy = Math.abs(e.touches[0].clientY - touchStartY);
-                        // Si scroll vertical dominant → laisser défiler naturellement
-                        if (!hasDragged && dy > Math.abs(dx)) {
-                            return;
-                        }
-                        // Si on commence à draguer horizontalement → empêcher scroll page
-                        if (Math.abs(dx) > 5) {
-                            hasDragged = true;
-                            e.preventDefault();
-                        }
-                        if (!hasDragged) return;
-                        touchOffset = dx;
-                        let rawOffset = baseOffset + touchOffset;
-                        if (rawOffset > 0) rawOffset = rawOffset * 0.2;
-                        if (rawOffset < maxOffset()) rawOffset = maxOffset() + (rawOffset - maxOffset()) * 0.2;
-                        applyOffset(rawOffset, false);
-                        dragDelta = dx;
-                        track.classList.add('is-dragging');
-                    }, { passive: false });
-
-                    viewport.addEventListener('touchend', () => {
-                        if (!isMobile()) return;
-                        track.classList.remove('is-dragging');
-                        if (dragDelta < -40) snapTo(currentIdx + 1);
-                        else if (dragDelta > 40) snapTo(currentIdx - 1);
-                        else snapTo(currentIdx);
-                    });
-
-                    // ── Boutons flèches ──
-                    prevBtn.addEventListener('click', () => snapTo(currentIdx - 1));
-                    nextBtn.addEventListener('click', () => snapTo(currentIdx + 1));
-
-                    // ── Initialisation ──
-                    snapTo(0);
-                }
-
-                /* ─── Init selon écran + resize ─── */
-                function init() {
-                    if (isMobile()) {
-                        // Nettoyer les clones du desktop
-                        track.querySelectorAll('[aria-hidden="true"]').forEach(el => el.remove());
-                        track.style.animation = 'none';
-                        track.dataset.cloned = '';
-                        initMobile();
+                function setPos(instant) {
+                    if (instant) {
+                        track.style.transition = 'none';
+                        track.style.transform  = `translateX(${pos}px)`;
+                        // Laisse le navigateur appliquer, puis réactive les transitions
+                        requestAnimationFrame(() => requestAnimationFrame(() => {
+                            track.style.transition = '';
+                        }));
                     } else {
-                        // Nettoyer l'init mobile
-                        track.style.transform = '';
-                        track.style.animation = '';
-                        track.dataset.mobileInit = '';
-                        initDesktop();
+                        track.style.transform = `translateX(${pos}px)`;
                     }
                 }
+
+                function reflow() {
+                    const cw = CLONE_W();
+                    if (pos <= -cw * 2) { pos += cw; setPos(true); }
+                    if (pos >= 0)        { pos -= cw; setPos(true); }
+                }
+
+                function init() {
+                    pos = -CLONE_W(); // démarre sur la série du milieu
+                    setPos(true);
+                }
+
+                function loop() {
+                    if (isAuto && !isDrag) {
+                        pos -= speed;
+                        reflow();
+                        track.style.transform = `translateX(${pos}px)`;
+                    }
+                    requestAnimationFrame(loop);
+                }
+
+                function stepBy(n) {
+                    isAuto = false;
+                    clearTimeout(window._carouselResumeTimer);
+                    pos -= n * ITEM_W();
+                    reflow();
+                    track.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
+                    track.style.transform  = `translateX(${pos}px)`;
+                    setTimeout(() => { track.style.transition = ''; }, 400);
+                    window._carouselResumeTimer = setTimeout(() => { isAuto = true; }, 2500);
+                }
+
+                document.getElementById('carousel-prev').addEventListener('click', () => stepBy(-1));
+                document.getElementById('carousel-next').addEventListener('click', () => stepBy(1));
+
+                // Drag pointer
+                vp.addEventListener('pointerdown', e => {
+                    isDrag = true; didDrag = false; isAuto = false;
+                    dragSX = e.clientX; dragSPos = pos;
+                    vp.setPointerCapture(e.pointerId);
+                    track.style.transition = 'none';
+                });
+                vp.addEventListener('pointermove', e => {
+                    if (!isDrag) return;
+                    const dx = e.clientX - dragSX;
+                    if (Math.abs(dx) > 5) didDrag = true;
+                    pos = dragSPos + dx;
+                    track.style.transform = `translateX(${pos}px)`;
+                });
+                vp.addEventListener('pointerup', e => {
+                    if (!isDrag) return;
+                    isDrag = false;
+                    const dx = e.clientX - dragSX;
+                    if (Math.abs(dx) > 40) pos = dragSPos - Math.sign(-dx) * ITEM_W();
+                    reflow();
+                    track.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
+                    track.style.transform  = `translateX(${pos}px)`;
+                    setTimeout(() => { track.style.transition = ''; isAuto = true; }, 400);
+                });
+                vp.addEventListener('pointercancel', () => {
+                    isDrag = false; isAuto = true;
+                    reflow();
+                });
+
+                // Bloque les clics si l'utilisateur a dragué
+                vp.addEventListener('click', e => { if (didDrag) { e.preventDefault(); e.stopPropagation(); didDrag = false; } }, true);
+
+                // Pause au survol (desktop)
+                vp.addEventListener('mouseenter', () => { isAuto = false; });
+                vp.addEventListener('mouseleave', () => { isAuto = true; });
+
+                // Réinit si la taille change
+                window.addEventListener('resize', () => {
+                    clearTimeout(window._carouselResizeTimer);
+                    window._carouselResizeTimer = setTimeout(init, 150);
+                });
 
                 init();
-                let resizeTimer;
-                window.addEventListener('resize', () => {
-                    clearTimeout(resizeTimer);
-                    resizeTimer = setTimeout(init, 150);
-                });
+                loop();
             })();
 
-            // ===== BARRE DE RECHERCHE =====
+            /* ── Recherche ──────────────────────────────────────────────── */
             const searchInput = document.getElementById('searchInput');
-            const searchBtn = document.getElementById('searchBtn');
-
+            const searchBtn   = document.getElementById('searchBtn');
             function doSearch() {
-                const query = searchInput.value.trim();
-                if (!query) return;
-                // URL directe si saisie d'une URL valide, sinon Google
-                const isURL = /^(https?:\/\/|www\.)\S+/.test(query);
-                const url = isURL
-                    ? (query.startsWith('http') ? query : 'https://' + query)
-                    : `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-                window.open(url, '_blank');
+                const q = searchInput.value.trim(); if (!q) return;
+                const isURL = /^(https?:\/\/|www\.)\S+/.test(q);
+                window.open(isURL ? (q.startsWith('http') ? q : 'https://'+q) : `https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank');
                 searchInput.value = '';
             }
-
-            searchInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') doSearch();
-            });
+            searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
             searchBtn.addEventListener('click', doSearch);
 
-            // ===== MODAL AJOUTER UN RACCOURCI =====
-            const addBtn = document.getElementById('addShortcutBtn');
-            const shortcutModal = document.getElementById('shortcutModal');
-            const shortcutClose = document.getElementById('shortcutClose');
+            /* ── Raccourcis utilisateur ─────────────────────────────────── */
+            const addBtn          = document.getElementById('addShortcutBtn');
+            const shortcutModal   = document.getElementById('shortcutModal');
+            const shortcutClose   = document.getElementById('shortcutClose');
             const shortcutConfirm = document.getElementById('shortcutConfirm');
-            const shortcutName = document.getElementById('shortcutName');
-            const shortcutUrl = document.getElementById('shortcutUrl');
-            const siteGrid = document.getElementById('siteGrid');
-            const MAX_SHORTCUTS = 7;
+            const shortcutName    = document.getElementById('shortcutName');
+            const shortcutUrl     = document.getElementById('shortcutUrl');
+            const siteGrid        = document.getElementById('siteGrid');
+            const MAX_SC = 7;
 
-            function loadShortcuts() {
-                try { return JSON.parse(localStorage.getItem('pyramid_shortcuts') || '[]'); }
-                catch { return []; }
-            }
-            function saveShortcuts(arr) {
-                localStorage.setItem('pyramid_shortcuts', JSON.stringify(arr));
-            }
-            function updateAddButtonVisibility() {
-                const shortcuts = loadShortcuts();
-                if (shortcuts.length >= MAX_SHORTCUTS) {
-                    addBtn.style.display = 'none';
-                } else {
-                    addBtn.style.display = 'flex';
-                }
-            }
+            function loadSC() { try { return JSON.parse(localStorage.getItem('pyramid_shortcuts') || '[]'); } catch { return []; } }
+            function saveSC(a) { localStorage.setItem('pyramid_shortcuts', JSON.stringify(a)); }
+            function refreshAddBtn() { addBtn.style.display = loadSC().length >= MAX_SC ? 'none' : 'flex'; }
+
             function renderShortcuts() {
                 document.querySelectorAll('.user-shortcut').forEach(el => el.remove());
-                const shortcuts = loadShortcuts();
-                shortcuts.forEach((sc, index) => {
+                loadSC().forEach((sc, i) => {
                     const a = document.createElement('a');
-                    a.href = sc.url;
-                    a.target = '_blank';
-                    a.rel = 'noopener';
-                    a.className = 'user-shortcut w-20 h-20 md:w-24 md:h-24 rounded-xl bg-surface-container-low border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex flex-col items-center justify-center gap-1 md:gap-2 p-2 md:p-3 relative';
-                    const favicon = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(sc.url)}`;
+                    a.href = sc.url; a.target = '_blank'; a.rel = 'noopener';
+                    a.className = 'user-shortcut w-14 h-14 md:w-[72px] md:h-[72px] rounded-xl bg-surface-container-low border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex flex-col items-center justify-center gap-1 p-2 relative';
+                    const fav = `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(sc.url)}`;
                     a.innerHTML = `
-                        <button class="shortcut-menu-btn absolute -top-1 -right-1 w-5 h-5 md:w-6 md:h-6 rounded-full bg-surface-container border border-outline-variant/30 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity z-10" data-index="${index}" aria-label="Options">
-                            <svg class="w-3 h-3 md:w-4 md:h-4 text-on-surface-variant" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                        <button class="shortcut-menu-btn absolute -top-1 -right-1 w-5 h-5 rounded-full bg-surface-container border border-outline-variant/30 flex items-center justify-center opacity-0 transition-opacity z-10" data-index="${i}" aria-label="Options">
+                            <svg class="w-3 h-3 text-on-surface-variant" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                         </button>
-                        <div class="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-surface-container flex items-center justify-center overflow-hidden">
-                            <img src="${favicon}" class="w-6 h-6 md:w-8 md:h-8 object-contain" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-                            <span style="display:none" class="w-full h-full items-center justify-center text-primary text-base md:text-lg font-headline">${sc.name.charAt(0).toUpperCase()}</span>
+                        <div class="w-7 h-7 rounded-lg bg-surface-container flex items-center justify-center overflow-hidden">
+                            <img src="${fav}" class="w-5 h-5 object-contain" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                            <span style="display:none" class="w-full h-full items-center justify-center text-primary text-sm font-headline">${sc.name.charAt(0).toUpperCase()}</span>
                         </div>
-                        <span class="text-[10px] md:text-xs font-label tracking-wide text-on-surface-variant group-hover:text-primary text-center leading-tight truncate w-full">${sc.name}</span>
-                    `;
-                    // Insérer avant le bouton Ajouter
+                        <span class="text-[8px] font-label tracking-wide text-on-surface-variant group-hover:text-primary text-center leading-tight truncate w-full">${sc.name}</span>`;
                     siteGrid.insertBefore(a, addShortcutBtn);
                 });
-
-                // Mettre à jour la visibilité du bouton Ajouter
-                updateAddButtonVisibility();
-
-                // Gestion des menus contextuels
+                refreshAddBtn();
                 document.querySelectorAll('.shortcut-menu-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        const index = parseInt(btn.dataset.index);
-                        showShortcutMenu(index, btn);
-                    });
+                    btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showSCMenu(parseInt(btn.dataset.index), btn); });
                 });
             }
 
-            // Menu contextuel pour les raccourcis
-            let currentMenuIndex = null;
-
-            function showShortcutMenu(index, triggerBtn) {
-                // Fermer tout menu ouvert
-                closeShortcutMenu();
-
-                currentMenuIndex = index;
-                const shortcuts = loadShortcuts();
-                const sc = shortcuts[index];
-                if (!sc) return;
-
-                // Créer le menu
+            let ctxMenuIdx = null;
+            function showSCMenu(index, trigger) {
+                closeSCMenu();
+                ctxMenuIdx = index;
+                const sc = loadSC()[index]; if (!sc) return;
                 const menu = document.createElement('div');
-                menu.id = 'shortcutContextMenu';
+                menu.id = 'scMenu';
                 menu.className = 'fixed z-[200] bg-surface-container-low border border-outline-variant/20 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden';
                 menu.innerHTML = `
-                    <button id="contextMenuEdit" class="w-full px-4 py-2.5 text-left text-xs font-label text-on-surface hover:bg-primary/10 hover:text-primary flex items-center gap-2 transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                        Modifier
+                    <button id="scEdit" class="w-full px-4 py-2.5 text-left text-xs font-label text-on-surface hover:bg-primary/10 hover:text-primary flex items-center gap-2 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>Modifier
                     </button>
-                    <button id="contextMenuDelete" class="w-full px-4 py-2.5 text-left text-xs font-label text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                        Supprimer
-                    </button>
-                `;
-
-                // Positionner le menu
-                const btnRect = triggerBtn.getBoundingClientRect();
-                const menuWidth = 140;
-                let left = btnRect.right - menuWidth;
-                if (left < 10) left = 10;
-                const top = btnRect.bottom + 8;
-
-                menu.style.cssText = `left: ${left}px; top: ${top}px;`;
+                    <button id="scDel" class="w-full px-4 py-2.5 text-left text-xs font-label text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>Supprimer
+                    </button>`;
+                const r = trigger.getBoundingClientRect(), mw = 140;
+                let left = r.right - mw; if (left < 10) left = 10;
+                menu.style.cssText = `left:${left}px;top:${r.bottom+8}px;`;
                 document.body.appendChild(menu);
-
-                // Gestionnaires d'événements
-                document.getElementById('contextMenuEdit').addEventListener('click', () => {
-                    editShortcut(index);
-                    closeShortcutMenu();
-                });
-
-                document.getElementById('contextMenuDelete').addEventListener('click', () => {
-                    deleteShortcut(index);
-                    closeShortcutMenu();
-                });
-
-                // Fermer au clic ailleurs
-                setTimeout(() => {
-                    document.addEventListener('click', closeShortcutMenuHandler);
-                }, 100);
+                document.getElementById('scEdit').addEventListener('click', () => { editSC(index); closeSCMenu(); });
+                document.getElementById('scDel').addEventListener('click', () => { const a = loadSC(); a.splice(index, 1); saveSC(a); renderShortcuts(); closeSCMenu(); });
+                setTimeout(() => { document.addEventListener('click', closeSCMenuHandler); }, 100);
             }
+            function closeSCMenuHandler(e) { const m = document.getElementById('scMenu'); if (m && !m.contains(e.target)) closeSCMenu(); }
+            function closeSCMenu() { document.getElementById('scMenu')?.remove(); document.removeEventListener('click', closeSCMenuHandler); ctxMenuIdx = null; }
 
-            function closeShortcutMenuHandler(e) {
-                const menu = document.getElementById('shortcutContextMenu');
-                const menuBtn = document.querySelector('.shortcut-menu-btn');
-                if (menu && !menu.contains(e.target) && !menuBtn?.contains(e.target)) {
-                    closeShortcutMenu();
-                }
-            }
-
-            function closeShortcutMenu() {
-                const menu = document.getElementById('shortcutContextMenu');
-                if (menu) menu.remove();
-                document.removeEventListener('click', closeShortcutMenuHandler);
-                currentMenuIndex = null;
-            }
-
-            function editShortcut(index) {
-                const shortcuts = loadShortcuts();
-                const sc = shortcuts[index];
-                if (!sc) return;
-
-                shortcutName.value = sc.name;
-                shortcutUrl.value = sc.url.replace(/^https?:\/\//, '');
-
-                // Mettre à jour le titre et le bouton du modal
-                document.getElementById('shortcutModalTitle').textContent = 'Modifier le Raccourci';
+            function editSC(index) {
+                const a = loadSC(), sc = a[index]; if (!sc) return;
+                shortcutName.value = sc.name; shortcutUrl.value = sc.url.replace(/^https?:\/\//, '');
+                document.getElementById('scModalTitle').textContent = 'Modifier le Raccourci';
                 shortcutConfirm.textContent = 'Enregistrer';
-
-                // Modifier le gestionnaire du bouton confirmer pour la modification
-                const originalConfirmHandler = shortcutConfirm.onclick;
+                const orig = shortcutConfirm.onclick;
                 shortcutConfirm.onclick = () => {
-                    const name = shortcutName.value.trim();
-                    let url = shortcutUrl.value.trim();
+                    const name = shortcutName.value.trim(); let url = shortcutUrl.value.trim();
                     if (!name || !url) return;
                     if (!/^https?:\/\//.test(url)) url = 'https://' + url;
-                    shortcuts[index] = { name, url };
-                    saveShortcuts(shortcuts);
-                    renderShortcuts();
-                    closeModal();
-                    // Restaurer le gestionnaire original
-                    shortcutConfirm.onclick = originalConfirmHandler;
+                    a[index] = { name, url }; saveSC(a); renderShortcuts(); closeModal(); shortcutConfirm.onclick = orig;
                 };
-
-                shortcutModal.classList.remove('hidden');
-                shortcutModal.classList.add('flex');
-                shortcutName.focus();
-            }
-
-            function deleteShortcut(index) {
-                const shortcuts = loadShortcuts();
-                shortcuts.splice(index, 1);
-                saveShortcuts(shortcuts);
-                renderShortcuts();
+                shortcutModal.classList.remove('hidden'); shortcutModal.classList.add('flex'); shortcutName.focus();
             }
 
             addBtn.addEventListener('click', () => {
-                const shortcuts = loadShortcuts();
-                if (shortcuts.length >= MAX_SHORTCUTS) {
-                    alert('Maximum de 7 raccourcis atteint. Supprimez un raccourci existant pour en ajouter un nouveau.');
-                    return;
-                }
-                shortcutModal.classList.remove('hidden');
-                shortcutModal.classList.add('flex');
-                shortcutName.focus();
+                if (loadSC().length >= MAX_SC) { alert('Maximum de 7 raccourcis atteint.'); return; }
+                shortcutModal.classList.remove('hidden'); shortcutModal.classList.add('flex'); shortcutName.focus();
             });
-
             function closeModal() {
-                shortcutModal.classList.add('hidden');
-                shortcutModal.classList.remove('flex');
-                shortcutName.value = '';
-                shortcutUrl.value = '';
-                // Réinitialiser le titre et le bouton
-                document.getElementById('shortcutModalTitle').textContent = 'Nouveau Raccourci';
-                shortcutConfirm.textContent = 'Ajouter';
+                shortcutModal.classList.add('hidden'); shortcutModal.classList.remove('flex');
+                shortcutName.value = ''; shortcutUrl.value = '';
+                document.getElementById('scModalTitle').textContent = 'Nouveau Raccourci'; shortcutConfirm.textContent = 'Ajouter';
             }
-
             shortcutClose.addEventListener('click', closeModal);
-            shortcutModal.addEventListener('click', (e) => { if (e.target === shortcutModal) closeModal(); });
-
+            shortcutModal.addEventListener('click', e => { if (e.target === shortcutModal) closeModal(); });
             shortcutConfirm.addEventListener('click', () => {
-                const name = shortcutName.value.trim();
-                let url = shortcutUrl.value.trim();
+                const name = shortcutName.value.trim(); let url = shortcutUrl.value.trim();
                 if (!name || !url) return;
                 if (!/^https?:\/\//.test(url)) url = 'https://' + url;
-                const shortcuts = loadShortcuts();
-                shortcuts.push({ name, url });
-                saveShortcuts(shortcuts);
-                renderShortcuts();
-                closeModal();
+                const a = loadSC(); a.push({ name, url }); saveSC(a); renderShortcuts(); closeModal();
             });
-
-            [shortcutName, shortcutUrl].forEach(el => {
-                el.addEventListener('keydown', (e) => { if (e.key === 'Enter') shortcutConfirm.click(); });
-            });
-
+            [shortcutName, shortcutUrl].forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter') shortcutConfirm.click(); }));
             renderShortcuts();
         });
     </script>
+
     <style>
-        body {
-            opacity: 0;
-            transform: scale(1.02);
-            transition: opacity 0.8s ease, transform 0.8s ease;
+        /* ── Entrée page ── */
+        body { opacity: 0; transform: scale(1.02); transition: opacity .8s ease, transform .8s ease; }
+        body.loaded { opacity: 1; transform: scale(1); }
+
+        /* ═══ ÉCRAN UNIQUE — aucun scroll ═══ */
+        html, body { height: 100%; overflow: hidden; }
+        #main-page { height: 100dvh; overflow: hidden; }
+
+        /* ── Horloge responsive ── */
+        #clock { font-size: clamp(2.2rem, 11vw, 6.5rem); line-height: 1; }
+        #date  { font-size: clamp(0.5rem, 1.4vw, 0.7rem); margin-top: 3px; }
+
+        /* ── Écrans très courts ── */
+        @media (max-height: 520px) {
+            #clock { font-size: 1.8rem !important; }
+            #date  { display: none; }
+            .partner-item { width: 32px !important; height: 32px !important; }
+            .sc-item { width: 44px !important; height: 44px !important; }
+        }
+        @media (max-height: 650px) {
+            #clock { font-size: 2.2rem !important; }
         }
 
-        body.loaded {
-            opacity: 1;
-            transform: scale(1);
+        /* ── Widget météo — uniquement à gauche, taille compacte ── */
+        .weather-widget-wrap {
+            /* Positionné à gauche, ne s'étire jamais */
+            flex-shrink: 0;
+            max-width: fit-content;
         }
-
-        .clock-glow {
-            color: #ffffff;
-            display: inline-block;
-            min-width: 283px;
+        .glass-widget {
+            background: rgba(13,20,17,.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(45,74,61,.2);
         }
-
+        /* Sur petit écran, widget encore plus compact */
         @media (max-width: 640px) {
-            .glass-widget {
-                padding: 6px 10px !important;
-                gap: 8px !important;
-            }
-            #temperature {
-                font-size: 12px !important;
-            }
-            #weather-icon {
-                font-size: 16px !important;
-            }
-            #weather-icon i {
-                font-size: 16px !important;
-            }
-            .glass-widget p.text-\[10px\] {
-                font-size: 7px !important;
-                letter-spacing: 0.05em !important;
-            }
+            .glass-widget { padding: 6px 10px !important; gap: 6px !important; }
+            #temperature  { font-size: 13px !important; }
+            #weather-icon, #weather-icon i { font-size: 15px !important; }
+            #weather-desc { font-size: 8px !important; }
+            #weather-meta { gap: 4px !important; }
+            #weather-meta span { font-size: 7px !important; }
         }
 
-        #weather-icon i,
-        #closePanel i {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
+        #weather-icon i, #closePanel i { display: inline-flex; align-items: center; justify-content: center; }
+        #location-display { transition: opacity .4s ease; }
 
-        .card-hover {
-            transition: box-shadow 0.3s ease;
-        }
+        .card-hover { transition: box-shadow .3s ease; }
+        .card-hover:hover { box-shadow: 0 20px 40px rgba(0,0,0,.4); }
 
-        .card-hover:hover {
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-        }
+        .shortcut-menu-btn { opacity: 0; pointer-events: none; }
+        .user-shortcut:hover .shortcut-menu-btn { opacity: 1; pointer-events: auto; }
+        .shortcut-menu-btn:hover { background: rgba(7,169,104,.15) !important; border-color: rgba(7,169,104,.4) !important; }
+        .shortcut-menu-btn:hover svg { color: #07a968 !important; }
+        #scMenu { animation: menuFadeIn .15s ease-out; }
+        @keyframes menuFadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
 
-        /* Menu des raccourcis utilisateur */
-        .shortcut-menu-btn {
-            opacity: 0;
-            pointer-events: none;
-        }
-        .user-shortcut:hover .shortcut-menu-btn {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .shortcut-menu-btn:hover {
-            background: rgba(7, 169, 104, 0.15) !important;
-            border-color: rgba(7, 169, 104, 0.4) !important;
-        }
-        .shortcut-menu-btn:hover svg {
-            color: #07a968 !important;
-        }
-        #shortcutContextMenu {
-            animation: menuFadeIn 0.15s ease-out;
-        }
-        @keyframes menuFadeIn {
-            from { opacity: 0; transform: translateY(-4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .search-focus:focus-within { box-shadow: 0 0 25px rgba(7,169,104,.3); border-color: rgba(7,169,104,.5); }
 
-        .search-focus:focus-within {
-            box-shadow: 0 0 25px rgba(7, 169, 104, 0.3);
-            border-color: rgba(7, 169, 104, 0.5);
+        a, button, span, img, div[class*="border"], div[class*="bg-"], .glass-widget, .glass-button {
+            transition: color .2s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
         }
+        .fixed.inset-0 img { transition: opacity .5s ease; }
+        .bg-image { transition: opacity .6s ease, transform .6s ease; }
 
-        /* Transitions ciblées uniquement — pas de "transition: all" global */
-        a, button, span, img, div[class*="border"], div[class*="bg-"],
-        .glass-widget, .glass-button {
-            transition: color 0.2s ease, background-color 0.2s ease,
-                        border-color 0.2s ease, box-shadow 0.2s ease,
-                        opacity 0.2s ease;
-        }
+        /* ── Scrollbars ── */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #07a968; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #0fcf80; }
+        #themePanel::-webkit-scrollbar { height: 8px; }
+        #themePanel::-webkit-scrollbar-track { background: #000; }
+        #themePanel::-webkit-scrollbar-thumb { background: #07a968; border-radius: 10px; }
 
-        .fixed.inset-0 img {
-            transition: opacity 0.5s ease;
-        }
+        /* ── Thèmes ── */
+        .theme-item.active .active-indicator { opacity:1; box-shadow: 0 0 20px rgba(7,169,104,.6); }
+        .theme-item { transition: transform .3s ease, box-shadow .3s ease; }
+        .theme-item:hover { transform: scale(1.05); }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
 
-        .bg-image {
-            transition: opacity 0.6s ease, transform 0.6s ease;
-        }
-
-        /* Scrollbar du navigateur */
-        ::-webkit-scrollbar {
-            width: 10px;
-            height: 10px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: #000;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: #07a968;
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: #0fcf80;
-        }
-
-        /* Scrollbar horizontale du panneau des thèmes */
-        #themePanel::-webkit-scrollbar {
-            height: 8px;
-        }
-
-        #themePanel::-webkit-scrollbar-track {
-            background: #000;
-        }
-
-        #themePanel::-webkit-scrollbar-thumb {
-            background: #07a968;
-            border-radius: 10px;
-        }
-
-        #themePanel::-webkit-scrollbar-thumb:hover {
-            background: #0fcf80;
-        }
-
-        .theme-item.active .active-indicator {
-            opacity: 1;
-            box-shadow: 0 0 20px rgba(7, 169, 104, 0.6);
-        }
-
-        .theme-item {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .theme-item:hover {
-            transform: scale(1.05);
-        }
-
-        .hide-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-
-        /* ===== CAROUSEL MINISTÈRES ===== */
-
-        /* ── Structure section ── */
+        /* ══════════════════════════════════════
+           CAROUSEL INFINI
+        ══════════════════════════════════════ */
         #ministries-section {
             display: flex;
             align-items: center;
-            gap: 0;
+            gap: 8px;
             position: relative;
-            padding: 4px 0;
+            padding: 2px 10px;
             overflow: visible;
         }
 
-        /* ── Viewport — masque les bords ── */
+        /* Viewport masqué sur les bords */
         .carousel-viewport {
             flex: 1;
             overflow: hidden;
@@ -948,119 +651,48 @@
             cursor: grab;
             user-select: none;
             -webkit-user-select: none;
+            mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
         }
-        .carousel-viewport.is-dragging {
-            cursor: grabbing;
-        }
+        .carousel-viewport.is-dragging { cursor: grabbing; }
 
-        /* ── Track ── */
+        /* Track : pas de gap CSS car on gère en JS */
         .carousel-track {
             display: flex;
-            gap: 1.25rem;
+            gap: 18px;           /* doit correspondre à GAP dans le JS */
             width: max-content;
             will-change: transform;
         }
 
-        /* ── Flèches (masquées sur desktop) ── */
+        /* Flèches : toujours visibles */
         .carousel-arrow {
-            display: none;
+            display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: rgba(15, 23, 19, 0.7);
-            border: 1px solid rgba(45, 74, 61, 0.3);
+            background: rgba(15,23,19,.75);
+            border: 1px solid rgba(45,74,61,.35);
             color: #a8c4b8;
             backdrop-filter: blur(8px);
-            transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+            transition: color .2s, border-color .2s, background-color .2s;
             z-index: 10;
+            cursor: pointer;
         }
-        .carousel-arrow svg {
-            width: 16px;
-            height: 16px;
-        }
+        .carousel-arrow svg { width: 14px; height: 14px; pointer-events: none; }
         .carousel-arrow:hover {
             color: #07a968;
-            border-color: rgba(7, 169, 104, 0.5);
-            background: rgba(7, 169, 104, 0.1);
-        }
-        .carousel-arrow:disabled {
-            opacity: 0.25;
-            pointer-events: none;
+            border-color: rgba(7,169,104,.55);
+            background: rgba(7,169,104,.12);
         }
 
-        /* ── Desktop : auto-scroll CSS ── */
-        @media (min-width: 769px) {
-            #ministries-section {
-                justify-content: center;
-            }
-            .carousel-viewport {
-                max-width: 900px;
-                cursor: default;
-                mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
-                -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
-            }
-            .carousel-track {
-                animation: scroll-left 28s linear infinite;
-            }
-            .carousel-track:hover {
-                animation-play-state: paused;
-            }
-        }
-
-        @keyframes scroll-left {
-            0%   { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-
-        /* ── Mobile : peek + drag ── */
-        @media (max-width: 768px) {
-            #ministries-section {
-                gap: 8px;
-                padding: 4px 12px;
-            }
-            .carousel-arrow {
-                display: flex;
-            }
-            .carousel-viewport {
-                /* Laisse déborder les cartes sur les bords → effet peek du croquis */
-                mask-image: linear-gradient(to right,
-                    transparent 0%, black 14%, black 86%, transparent 100%);
-                -webkit-mask-image: linear-gradient(to right,
-                    transparent 0%, black 14%, black 86%, transparent 100%);
-            }
-            .carousel-track {
-                gap: 0.9rem;
-                /* La transition smooth s'applique au snap, pas pendant le drag */
-                transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-            }
-            .carousel-track.is-dragging {
-                transition: none;
-            }
-        }
-
-        .monolith-blur {
-            backdrop-filter: blur(20px);
-            background: rgba(19, 19, 19, 0.8);
-        }
-
-        .emerald-glow:focus-within {
-            box-shadow: 0 0 15px rgba(7, 169, 104, 0.2);
-            border-color: rgba(7, 169, 104, 0.4);
-        }
-
-        .glass-widget {
-            background: rgba(13, 20, 17, 0.4);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(45, 74, 61, 0.2);
-        }
-
+        /* ── Glass ── */
         .glass-button {
-            background: rgba(15, 23, 19, 0.5);
+            background: rgba(15,23,19,.5);
             backdrop-filter: blur(16px);
-            border: 1px solid rgba(45, 74, 61, 0.25);
+            border: 1px solid rgba(45,74,61,.25);
         }
 
         :root {
@@ -1071,393 +703,274 @@
             --on-surface: #e8f5f0;
             --on-surface-variant: #a8c4b8;
         }
-        body {
-            background-color: var(--bg);
-            color: var(--on-surface);
-            margin: 0;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-        /* Les liens du carousel héritent flex de leur classe utilitaire */
-        a {
-            text-decoration: none;
-            color: inherit;
-        }
-
-        /* Inputs du modal — focus ring */
-        #shortcutModal input:focus {
-            border-color: rgba(7, 169, 104, 0.5);
-            box-shadow: 0 0 12px rgba(7, 169, 104, 0.2);
-        }
-
-        .bg-gradient-light {
-            background: linear-gradient(135deg, #e8f5f0 0%, #c8e8dc 100%);
-        }
-
-        .bg-gradient-dark {
-            background: linear-gradient(135deg, #121c17 0%, #0a0f0d 100%);
-        }
+        body { background-color: var(--bg); color: var(--on-surface); margin: 0; }
+        a { text-decoration: none; color: inherit; }
+        #shortcutModal input:focus { border-color: rgba(7,169,104,.5); box-shadow: 0 0 12px rgba(7,169,104,.2); }
     </style>
 </head>
 
-<body class="bg-background text-on-surface font-body overflow-hidden">
+<body class="bg-background text-on-surface font-body">
 
-    <!-- Overlay Navigation -->
-    <div class="fixed top-0 left-0 right-0 p-4 flex justify-between items-start z-50 pointer-events-none">
-        <!-- Weather Widget -->
-        <div class="glass-widget px-4 py-2 rounded-xl flex items-center gap-3 pointer-events-auto">
-            <span id="weather-icon" class="w-8 h-8 rounded-full flex items-center justify-center border-2 border-primary bg-surface/50">
-                <i class="fas fa-sun text-white text-sm"></i>
-            </span>
-            <div>
-                <p id="temperature" class="text-lg font-headline font-medium leading-none">--°C</p>
-                <p class="text-[8px] uppercase tracking-widest text-on-surface-variant mt-0.5">Douala, Cameroun</p>
+    <!-- ══════════════════════════════════════════════════════════════
+         BARRE SUPÉRIEURE FIXE
+         Le widget météo est aligné à gauche et ne prend que la place
+         nécessaire (flex-shrink:0 + max-width:fit-content).
+         Les boutons Play & Mail restent à droite.
+    ═══════════════════════════════════════════════════════════════ -->
+    <div class="fixed top-0 left-0 right-0 px-5 py-3.5 flex justify-between items-start z-50 pointer-events-none">
+
+        <!-- Widget Météo : ancré à gauche, largeur auto -->
+        <div class="weather-widget-wrap pointer-events-auto">
+            <div class="glass-widget px-4 py-2 rounded-2xl flex items-center gap-3">
+
+                <!-- Icône météo -->
+                <span id="weather-icon"
+                      class="w-9 h-9 rounded-full flex items-center justify-center border-2 border-primary bg-surface/50 flex-shrink-0"
+                      style="font-size:18px;">
+                    <i class="fas fa-sun" style="color:#ffffff;"></i>
+                </span>
+
+                <!-- Données -->
+                <div>
+                    <!-- Température -->
+                    <p id="temperature" class="text-lg font-headline font-medium leading-none">--°C</p>
+
+                    <!-- Description WMO en français -->
+                    <p id="weather-desc"
+                       class="text-[9px] uppercase tracking-wider text-primary/80 mt-0.5 leading-none">
+                        Chargement…
+                    </p>
+
+                    <!-- Ville, Pays -->
+                    <p id="location-display"
+                       class="text-[9px] uppercase tracking-widest text-on-surface-variant mt-0.5">
+                        Douala, Cameroun
+                    </p>
+
+                    <!-- Méta : humidité · vent · ressenti -->
+                    <div id="weather-meta"
+                         class="flex items-center gap-2 mt-1 flex-wrap">
+                        <span class="text-[8px] text-primary/70 flex items-center gap-1">
+                            <i class="fas fa-droplet" style="font-size:7px;"></i> --%
+                        </span>
+                        <span class="text-[8px] text-primary/70 flex items-center gap-1">
+                            <i class="fas fa-wind" style="font-size:7px;"></i> -- km/h
+                        </span>
+                        <span class="text-[8px] text-primary/70 flex items-center gap-1">
+                            <i class="fas fa-thermometer-half" style="font-size:7px;"></i> --°
+                        </span>
+                    </div>
+                </div>
+
             </div>
         </div>
-        <!-- Actions haut droite -->
-        <div class="flex items-center gap-4 pointer-events-auto">
-            <div class="flex items-center gap-3 px-3 py-1.5 rounded-lg border border-outline-variant/10 bg-surface-container-low/30">
-                <button class="flex items-center gap-1.5 group transition-all">
-                    <img src="assets/logo/icon-pyramid-play-white.svg" class="w-4 h-4 object-contain">
-                    <span class="text-[9px] font-headline tracking-widest uppercase text-on-surface-variant group-hover:text-primary">Play</span>
+
+        <!-- Boutons Play & Mail (droite) -->
+        <div class="flex items-center gap-3 pointer-events-auto">
+            <div class="flex items-center gap-3 px-3 py-2 rounded-lg border border-outline-variant/10 bg-surface-container-low/30">
+                <button class="flex items-center gap-1.5 group">
+                    <img src="assets/logo/icon-pyramid-play-white.svg" class="w-5 h-5 object-contain" alt="Play">
+                    <span class="text-[10px] font-headline tracking-widest uppercase text-on-surface-variant group-hover:text-primary">Play</span>
                 </button>
-                <div class="w-[1px] h-3 bg-outline-variant/30"></div>
-                <button class="flex items-center gap-1.5 group transition-all">
-                    <img src="assets/logo/Icon-PyramidMail.svg" class="w-4 h-4 object-contain">
-                    <span class="text-[9px] font-headline tracking-widest uppercase text-on-surface-variant group-hover:text-primary">Mail</span>
+                <div class="w-px h-3 bg-outline-variant/30"></div>
+                <button class="flex items-center gap-1.5 group">
+                    <img src="assets/logo/Icon-PyramidMail.svg" class="w-5 h-5 object-contain" alt="Mail">
+                    <span class="text-[10px] font-headline tracking-widest uppercase text-on-surface-variant group-hover:text-primary">Mail</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- Contenu principal -->
-    <main class="w-full h-screen flex flex-col items-center relative overflow-hidden">
+    <!-- ══════════════════════════════════════════════════════════════
+         PAGE PRINCIPALE
+    ═══════════════════════════════════════════════════════════════ -->
+    <main id="main-page"
+          class="w-full flex flex-col items-center overflow-hidden"
+          style="padding-top: 80px; padding-bottom: 60px;">
 
-        <!-- Haut de page : Horloge numérique & Date -->
-        <section class="mt-12 text-center select-none">
-            <h1 id="clock" class="font-headline text-5xl sm:text-6xl md:text-7xl font-light tracking-tighter clock-glow">
-                12:48
-            </h1>
-            <p id="date" class="font-headline text-[10px] md:text-xs tracking-[0.3em] uppercase text-white mt-1">
-                Thursday, October 24
-            </p>
-        </section>
+        <div class="flex-1 w-full flex flex-col items-center justify-evenly overflow-hidden">
 
-        <!-- Raccourcis Ministères Cameroun -->
-        <section id="ministries-section" class="mt-3 w-full pb-1">
+            <!-- ① Horloge & Date -->
+            <section class="text-center select-none">
+                <h1 id="clock" class="font-headline font-light tracking-tighter" style="color:#fff;">12:48</h1>
+                <p id="date" class="font-headline tracking-[0.3em] uppercase text-white">
+                    jeudi 7 avril
+                </p>
+            </section>
 
-            <!-- Boutons flèches — visibles uniquement mobile -->
-            <button id="carousel-prev" class="carousel-arrow" aria-label="Précédent">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
+            <!-- ② Carousel Ministères — scroll infini + flèches -->
+            <section id="ministries-section" class="w-full">
+                <!-- Flèche gauche — toujours visible -->
+                <button id="carousel-prev" class="carousel-arrow" aria-label="Précédent">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6"/>
+                    </svg>
+                </button>
 
-            <div class="carousel-viewport" id="carousel-viewport">
-                <div class="carousel-track" id="carousel-track">
-                    <!-- Présidence -->
-                    <a href="https://www.prc.cm" target="_blank" rel="noopener"
-                        class="carousel-item flex flex-col items-center gap-1.5 group cursor-pointer flex-shrink-0">
-                        <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
-                            <img src="assets/logo/Primatures.png" 
-                                 onerror="this.src='assets/logo/Primatures.png';this.onerror=null;" 
-                                 class="w-8 h-8 object-contain" draggable="false">
-                        </div>
-                        <span class="text-[9px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">Présidence</span>
-                    </a>
-                    <!-- Primature -->
-                    <a href="https://www.spm.gov.cm" target="_blank" rel="noopener"
-                        class="carousel-item flex flex-col items-center gap-1.5 group cursor-pointer flex-shrink-0">
-                        <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
-                            <img src="assets/logo/Primatures.png" 
-                                 onerror="this.src='assets/logo/Primatures.png';this.onerror=null;" 
-                                 class="w-8 h-8 object-contain" draggable="false">
-                        </div>
-                        <span class="text-[9px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">Primature</span>
-                    </a>
-                    <!-- MINFI -->
-                    <a href="https://www.minfi.gov.cm" target="_blank" rel="noopener"
-                        class="carousel-item flex flex-col items-center gap-1.5 group cursor-pointer flex-shrink-0">
-                        <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
-                            <img src="https://www.google.com/s2/favicons?sz=128&domain=www.minfi.gov.cm" 
-                                 onerror="this.src='assets/logo/minfi cm.png';this.onerror=null;" 
-                                 class="w-8 h-8 object-contain" draggable="false">
-                        </div>
-                        <span class="text-[9px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">MINFI</span>
-                    </a>
-                    <!-- MINPOSTEL -->
-                    <a href="https://www.minpostel.gov.cm" target="_blank" rel="noopener"
-                        class="carousel-item flex flex-col items-center gap-1.5 group cursor-pointer flex-shrink-0">
-                        <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
-                            <img src="assets/logo/Minpostel.jpeg" 
-                                 onerror="this.src='assets/logo/Minpostel.jpeg';this.onerror=null;" 
-                                 class="w-8 h-8 object-contain" draggable="false">
-                        </div>
-                        <span class="text-[9px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">MINPOSTEL</span>
-                    </a>
-                    <!-- MINJEC -->
-                    <a href="https://www.minjec.gov.cm" target="_blank" rel="noopener"
-                        class="carousel-item flex flex-col items-center gap-1.5 group cursor-pointer flex-shrink-0">
-                        <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
-                            <img src="https://www.google.com/s2/favicons?sz=128&domain=www.minjec.gov.cm" 
-                                 onerror="this.src='assets/logo/Minjec.jpg';this.onerror=null;" 
-                                 class="w-8 h-8 object-contain" draggable="false">
-                        </div>
-                        <span class="text-[9px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">MINJEC</span>
-                    </a>
-                    <!-- CNPS -->
-                    <a href="https://www.cnps.cm" target="_blank" rel="noopener"
-                        class="carousel-item flex flex-col items-center gap-1.5 group cursor-pointer flex-shrink-0">
-                        <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
-                            <img src="https://www.google.com/s2/favicons?sz=128&domain=www.cnps.cm" 
-                                 onerror="this.src='assets/logo/cnps.jpg';this.onerror=null;" 
-                                 class="w-8 h-8 object-contain" draggable="false">
-                        </div>
-                        <span class="text-[9px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">CNPS</span>
-                    </a>
-                    <!-- FEICOM -->
-                    <a href="https://feicom.cm" target="_blank" rel="noopener"
-                        class="carousel-item flex flex-col items-center gap-1.5 group cursor-pointer flex-shrink-0">
-                        <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
-                            <img src="https://www.google.com/s2/favicons?sz=128&domain=feicom.cm" 
-                                 onerror="this.src='assets/logo/feicom.png';this.onerror=null;" 
-                                 class="w-8 h-8 object-contain" draggable="false">
-                        </div>
-                        <span class="text-[9px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">FEICOM</span>
-                    </a>
-                    <!-- ANTIC -->
-                    <a href="https://www.antic.cm" target="_blank" rel="noopener"
-                        class="carousel-item flex flex-col items-center gap-1.5 group cursor-pointer flex-shrink-0">
-                        <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
-                            <img src="assets/logo/ANTIC.png" 
-                                 onerror="this.src='assets/logo/ANTIC.png';this.onerror=null;" 
-                                 class="w-8 h-8 object-contain" draggable="false">
-                        </div>
-                        <span class="text-[9px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">ANTIC</span>
-                    </a>
+                <div class="carousel-viewport" id="carousel-viewport">
+                    <div class="carousel-track" id="carousel-track">
+                        <!-- Les items originaux — le JS en fera 3 copies pour le scroll infini -->
+                        <a href="https://www.prc.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="assets/logo/Primatures.png" class="w-7 h-7 object-contain" draggable="false" alt="Présidence"></div>
+                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">Présidence</span>
+                        </a>
+                        <a href="https://www.spm.gov.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="assets/logo/Primatures.png" class="w-7 h-7 object-contain" draggable="false" alt="Primature"></div>
+                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">Primature</span>
+                        </a>
+                        <a href="https://www.minfi.gov.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.minfi.gov.cm" onerror="this.src='assets/logo/minfi cm.png';this.onerror=null;" class="w-7 h-7 object-contain" draggable="false" alt="MINFI"></div>
+                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">MINFI</span>
+                        </a>
+                        <a href="https://www.minpostel.gov.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="assets/logo/Minpostel.jpeg" class="w-7 h-7 object-contain" draggable="false" alt="MINPOSTEL"></div>
+                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">MINPOSTEL</span>
+                        </a>
+                        <a href="https://www.minjec.gov.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.minjec.gov.cm" onerror="this.src='assets/logo/Minjec.jpg';this.onerror=null;" class="w-7 h-7 object-contain" draggable="false" alt="MINJEC"></div>
+                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">MINJEC</span>
+                        </a>
+                        <a href="https://www.cnps.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.cnps.cm" onerror="this.src='assets/logo/cnps.jpg';this.onerror=null;" class="w-7 h-7 object-contain" draggable="false" alt="CNPS"></div>
+                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">CNPS</span>
+                        </a>
+                        <a href="https://feicom.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="https://www.google.com/s2/favicons?sz=128&domain=feicom.cm" onerror="this.src='assets/logo/feicom.png';this.onerror=null;" class="w-7 h-7 object-contain" draggable="false" alt="FEICOM"></div>
+                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">FEICOM</span>
+                        </a>
+                        <a href="https://www.antic.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="assets/logo/ANTIC.png" class="w-7 h-7 object-contain" draggable="false" alt="ANTIC"></div>
+                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">ANTIC</span>
+                        </a>
+                    </div>
                 </div>
-            </div>
 
-            <!-- Flèche droite -->
-            <button id="carousel-next" class="carousel-arrow" aria-label="Suivant">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
+                <!-- Flèche droite — toujours visible -->
+                <button id="carousel-next" class="carousel-arrow" aria-label="Suivant">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </button>
+            </section>
 
-        </section>
+            <!-- ③ Barre de recherche -->
+            <section class="w-full max-w-lg px-5">
+                <div class="relative group">
+                    <div class="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-1000"></div>
+                    <div class="relative flex items-center bg-white rounded-xl border border-outline-variant/20 search-focus px-4 py-3">
+                        <img src="product_logo(1).svg" alt="Logo" class="h-7 w-auto mr-3 select-none flex-shrink-0">
+                        <input id="searchInput" class="bg-transparent border-none focus:ring-0 w-full text-surface font-body text-sm placeholder-surface/40 outline-none" placeholder="Explorer le web..." type="text" autocomplete="off">
+                        <button id="searchBtn" class="ml-3 text-primary p-1 hover:scale-110 flex-shrink-0" style="transition:transform .2s ease"><i class="fas fa-search text-sm"></i></button>
+                    </div>
+                </div>
+            </section>
 
-        <!-- Barre de recherche -->
-        <section class="mt-4 w-full max-w-lg px-6">
-            <div class="relative group">
-                <div class="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-1000"></div>
-                <div class="relative flex items-center bg-white rounded-xl border border-outline-variant/20 search-focus px-5 py-3">
-                    <img src="product_logo(1).svg" alt="Logo" class="h-6 w-auto mr-3 select-none">
-                    <input
-                        id="searchInput"
-                        class="bg-transparent border-none focus:ring-0 w-full text-surface font-body text-sm placeholder-surface/40 outline-none"
-                        placeholder="Explorer le web..." type="text" autocomplete="off">
-                    <button id="searchBtn" class="ml-3 text-primary p-1 hover:scale-110" style="transition: transform 0.2s ease;">
-                        <i class="fas fa-search text-sm"></i>
+            <!-- ④ Sites Partenaires -->
+            <section class="w-full max-w-5xl px-5">
+                <div class="grid grid-cols-4 md:grid-cols-7 gap-2.5 md:gap-4 items-center justify-items-center">
+                    <a href="https://www.camtel.cm" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Camtel"><img src="assets/logo/Camtel.png" class="w-full h-full object-contain" alt="Camtel"></a>
+                    <a href="https://sourcedupays.com" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Source du Pays"><img src="https://www.google.com/s2/favicons?sz=128&domain=sourcedupays.com" onerror="this.src='assets/logo/Source du Pays.png';this.onerror=null;" class="w-full h-full object-contain" alt="Source du Pays"></a>
+                    <a href="https://www.cyberix.fr" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Cyberix"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.cyberix.fr" onerror="this.src='assets/logo/Cyberix.png';this.onerror=null;" class="w-full h-full object-contain" alt="Cyberix"></a>
+                    <a href="https://st.digital/cameroun" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="ST Digital"><img src="https://www.google.com/s2/favicons?sz=128&domain=st.digital" onerror="this.src='assets/logo/ST Digital.png';this.onerror=null;" class="w-full h-full object-contain" alt="ST Digital"></a>
+                    <a href="https://maviance.cm/" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Maviance"><img src="https://www.google.com/s2/favicons?sz=128&domain=maviance.cm" onerror="this.src='assets/logo/maviance.png';this.onerror=null;" class="w-full h-full object-contain" alt="Maviance"></a>
+                    <a href="https://pak.cm/" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Port de Kribi"><img src="https://www.google.com/s2/favicons?sz=128&domain=pak.cm" onerror="this.src='assets/logo/Port autonome Kribi.png';this.onerror=null;" class="w-full h-full object-contain" alt="Port de Kribi"></a>
+                    <a href="https://www.nexah.net/" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Nexah"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.nexah.net" onerror="this.src='assets/logo/nexah.png';this.onerror=null;" class="w-full h-full object-contain" alt="Nexah"></a>
+                </div>
+            </section>
+
+            <!-- ⑤ Raccourcis Utilisateur -->
+            <section class="w-full max-w-5xl px-5">
+                <div id="siteGrid" class="grid grid-cols-4 md:grid-cols-7 gap-2.5 md:gap-4 items-center justify-items-center">
+                    <button id="addShortcutBtn"
+                            class="sc-item w-14 h-14 md:w-[72px] md:h-[72px] rounded-xl bg-surface-container-low border-2 border-dashed border-primary/20 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 hover:border-primary/60 group card-hover"
+                            style="transition: background-color .2s, border-color .2s, box-shadow .2s">
+                        <div class="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110" style="transition:transform .2s"><i class="fas fa-plus text-xs"></i></div>
+                        <span class="text-[8px] font-headline tracking-widest uppercase text-primary/60">Ajouter</span>
                     </button>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- Sites Partenaires -->
-        <section class="mt-3 w-full max-w-6xl px-8 pb-2">
-            <div id="partnerGrid" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3 items-center justify-items-center">
-                <!-- Camtel -->
-                <a href="https://www.camtel.cm" target="_blank" rel="noopener"
-                    class="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-0.5 overflow-hidden"
-                    title="Camtel">
-                    <img src="assets/logo/Camtel.png"
-                         onerror="this.src='assets/logo/Camtel.png';this.onerror=null;"
-                         class="w-full h-full object-contain">
-                </a>
-                <!-- Source du Pays -->
-                <a href="https://sourcedupays.com" target="_blank" rel="noopener"
-                    class="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-0.5 overflow-hidden"
-                    title="Source du Pays">
-                    <img src="https://www.google.com/s2/favicons?sz=128&domain=sourcedupays.com"
-                         onerror="this.src='assets/logo/Source du Pays.png';this.onerror=null;"
-                         class="w-full h-full object-contain">
-                </a>
-                <!-- CYBERIX -->
-                <a href="https://www.cyberix.fr" target="_blank" rel="noopener"
-                    class="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-0.5 overflow-hidden"
-                    title="Cyberix">
-                    <img src="https://www.google.com/s2/favicons?sz=128&domain=www.cyberix.fr"
-                         onerror="this.src='assets/logo/Cyberix.png';this.onerror=null;"
-                         class="w-full h-full object-contain">
-                </a>
-                 <!-- ST Digital -->
-                 <a href="https://st.digital/cameroun" target="_blank" rel="noopener"
-                    class="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-0.5 overflow-hidden"
-                    title="ST Digital">
-                    <img src="https://www.google.com/s2/favicons?sz=128&domain=st.digital"
-                         onerror="this.src='assets/logo/ST Digital.png';this.onerror=null;"
-                         class="w-full h-full object-contain">
-                </a>
-                <!-- Maviance -->
-                <a href="https://maviance.cm/" target="_blank" rel="noopener"
-                    class="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-0.5 overflow-hidden"
-                    title="Maviance">
-                    <img src="https://www.google.com/s2/favicons?sz=128&domain=maviance.cm"
-                         onerror="this.src='assets/logo/maviance.png';this.onerror=null;"
-                         class="w-full h-full object-contain">
-                </a>
-                 <!-- Port autonome de Kribi-->
-                 <a href="https://pak.cm/" target="_blank" rel="noopener"
-                    class="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-0.5 overflow-hidden"
-                    title="Port de Kribi">
-                    <img src="https://www.google.com/s2/favicons?sz=128&domain=pak.cm"
-                         onerror="this.src='assets/logo/Port autonome Kribi.png';this.onerror=null;"
-                         class="w-full h-full object-contain">
-                </a>
-                 <!-- Nexah -->
-                 <a href="https://www.nexah.net/" target="_blank" rel="noopener"
-                    class="w-10 h-10 md:w-12 md:h-12 rounded-lg bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow cursor-pointer group card-hover no-underline flex items-center justify-center p-0.5 overflow-hidden"
-                    title="Nexah">
-                    <img src="https://www.google.com/s2/favicons?sz=128&domain=www.nexah.net"
-                         onerror="this.src='assets/logo/nexah.png';this.onerror=null;"
-                         class="w-full h-full object-contain">
-                </a>
-
-            </div>
-        </section>
-
-        <!-- Raccourcis Utilisateur -->
-        <section class="w-full max-w-6xl px-8 pb-16">
-            <div id="siteGrid" class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3 items-center justify-items-center">
-                <!-- Bouton Ajouter -->
-                <button id="addShortcutBtn" class="w-16 h-16 md:w-20 md:h-20 rounded-lg bg-surface-container-low border-2 border-dashed border-primary/20 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 hover:border-primary/60 group card-hover" style="transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;">
-                    <div class="w-7 h-7 md:w-9 md:h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 shadow-primary-glow" style="transition: transform 0.2s ease;">
-                        <i class="fas fa-plus text-sm md:text-base"></i>
-                    </div>
-                </button>
-            </div>
-        </section>
-
-        <!-- Bas droite : Bouton Personnaliser -->
-        <div class="fixed bottom-8 right-8">
-            <button id="customBtn"
-                class="flex items-center gap-3 px-6 py-3 bg-surface-bright rounded-xl border border-outline-variant/15 hover:border-primary/40 hover:shadow-primary-glow transition-all glass-button group">
-                <i class="fas fa-wand-magic-sparkles text-primary"></i>
-                <span class="text-xs font-headline tracking-[0.2em] uppercase text-on-surface-variant group-hover:text-primary">Personnaliser</span>
-            </button>
         </div>
     </main>
 
-    <!-- Panneau de sélection des thèmes -->
-    <div id="themePanel"
-        class="fixed bottom-0 left-0 w-full bg-surface-container-low/90 backdrop-blur-xl border-t border-outline-variant/20 transform translate-y-full transition-transform duration-500 z-50">
-        <!-- Barre de navigation -->
+    <!-- Bouton Personnaliser -->
+    <div class="fixed bottom-5 right-5 z-40">
+        <button id="customBtn" class="flex items-center gap-2 px-4 py-2.5 bg-surface-bright rounded-xl border border-outline-variant/15 hover:border-primary/40 hover:shadow-primary-glow glass-button group">
+            <i class="fas fa-wand-magic-sparkles text-primary text-sm"></i>
+            <span class="text-[10px] font-headline tracking-[.2em] uppercase text-on-surface-variant group-hover:text-primary">Personnaliser</span>
+        </button>
+    </div>
+
+    <!-- Panneau Thèmes -->
+    <div id="themePanel" class="fixed bottom-0 left-0 w-full bg-surface-container-low/90 backdrop-blur-xl border-t border-outline-variant/20 transform translate-y-full transition-transform duration-500 z-50">
         <div class="flex items-center justify-between px-8 py-4 border-b border-outline-variant/20">
             <span class="text-xs font-headline tracking-widest uppercase text-on-surface-variant">Choisis ton background</span>
-            <button id="closePanel"
-                class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-primary/10 border border-outline-variant/20 hover:border-primary/40 transition-all group">
-                <i class="fas fa-times text-on-surface-variant group-hover:text-primary transition-colors"></i>
+            <button id="closePanel" class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-primary/10 border border-outline-variant/20 hover:border-primary/40 group">
+                <i class="fas fa-times text-on-surface-variant group-hover:text-primary"></i>
             </button>
         </div>
-        <!-- Grille des thèmes -->
         <div class="h-48 flex items-center px-8 overflow-x-auto gap-4 pb-4">
-            <!-- Aucun thème (arrière-plan solide) -->
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative group flex-shrink-0"
-                data-bg="none">
-                <div class="w-full h-full flex items-center justify-center" style="background: linear-gradient(135deg, #121c17 0%, #0a0f0d 100%);">
-                    <svg class="w-10 h-10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1Z"/></svg>
-                </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0" data-bg="none">
+                <div class="w-full h-full flex items-center justify-center" style="background:linear-gradient(135deg,#121c17 0%,#0a0f0d 100%)"><svg class="w-10 h-10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1Z"/></svg></div>
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
-                    <span class="text-[9px] font-headline uppercase text-white tracking-wider">Aucun</span>
-                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span class="text-[9px] font-headline uppercase text-white tracking-wider">Aucun</span></div>
             </div>
-            <!-- Chutes Lobé -->
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative group flex-shrink-0"
-                data-bg="assets/backgrounds/chutes-Lobé.jpg">
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0" data-bg="assets/backgrounds/chutes-Lobé.jpg">
                 <img src="assets/backgrounds/chutes-Lobé.jpg" alt="Chutes Lobé" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
-                    <span class="text-[9px] font-headline uppercase text-white tracking-wider">Chutes Lobé</span>
-                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span class="text-[9px] font-headline uppercase text-white tracking-wider">Chutes Lobé</span></div>
             </div>
-            <!-- Chutes Ekom-Nkam -->
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative group flex-shrink-0"
-                data-bg="assets/backgrounds/Chuttes ekom-nkam.jpg">
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0" data-bg="assets/backgrounds/Chuttes ekom-nkam.jpg">
                 <img src="assets/backgrounds/Chuttes ekom-nkam.jpg" alt="Chutes Ekom-Nkam" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
-                    <span class="text-[9px] font-headline uppercase text-white tracking-wider">Chutes Ekom-Nkam</span>
-                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span class="text-[9px] font-headline uppercase text-white tracking-wider">Chutes Ekom-Nkam</span></div>
             </div>
-            <!-- Mont Cameroun -->
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative group flex-shrink-0"
-                data-bg="assets/backgrounds/Mont-Cameroun.png">
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0" data-bg="assets/backgrounds/Mont-Cameroun.png">
                 <img src="assets/backgrounds/Mont-Cameroun.png" alt="Mont Cameroun" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
-                    <span class="text-[9px] font-headline uppercase text-white tracking-wider">Mont Cameroun</span>
-                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span class="text-[9px] font-headline uppercase text-white tracking-wider">Mont Cameroun</span></div>
             </div>
-            <!-- Monts Mandara -->
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative group flex-shrink-0"
-                data-bg="assets/backgrounds/Monts Mandara.png">
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0" data-bg="assets/backgrounds/Monts Mandara.png">
                 <img src="assets/backgrounds/Monts Mandara.png" alt="Monts Mandara" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
-                    <span class="text-[9px] font-headline uppercase text-white tracking-wider">Monts Mandara</span>
-                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span class="text-[9px] font-headline uppercase text-white tracking-wider">Monts Mandara</span></div>
             </div>
-            <!-- Parc de la Mefou -->
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative group flex-shrink-0"
-                data-bg="assets/backgrounds/Parc de la Mefou.png">
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0" data-bg="assets/backgrounds/Parc de la Mefou.png">
                 <img src="assets/backgrounds/Parc de la Mefou.png" alt="Parc de la Mefou" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
-                    <span class="text-[9px] font-headline uppercase text-white tracking-wider">Parc de la Mefou</span>
-                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span class="text-[9px] font-headline uppercase text-white tracking-wider">Parc de la Mefou</span></div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Ajouter un Raccourci -->
+    <!-- Modal Raccourci -->
     <div id="shortcutModal" class="hidden fixed inset-0 z-[100] items-center justify-center bg-black/60 backdrop-blur-sm">
         <div class="bg-surface-container-low border border-outline-variant/20 rounded-2xl p-8 w-full max-w-sm mx-4 shadow-[0_32px_64px_rgba(0,16,8,0.5)]">
             <div class="flex items-center justify-between mb-6">
-                <h2 id="shortcutModalTitle" class="text-sm font-headline tracking-widest uppercase text-on-surface">Nouveau Raccourci</h2>
-                <button id="shortcutClose" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 border border-outline-variant/20">
-                    <i class="fas fa-times text-xs"></i>
-                </button>
+                <h2 id="scModalTitle" class="text-sm font-headline tracking-widest uppercase text-on-surface">Nouveau Raccourci</h2>
+                <button id="shortcutClose" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 border border-outline-variant/20"><i class="fas fa-times text-xs"></i></button>
             </div>
             <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[10px] font-headline tracking-widest uppercase text-on-surface-variant">Nom</label>
-                    <input id="shortcutName" type="text" placeholder="Ex: Douanes Cameroun"
-                        class="w-full bg-surface-container rounded-xl px-4 py-3 text-sm font-body text-on-surface placeholder-on-surface-variant/40 border border-outline-variant/20 focus:border-primary/50 focus:outline-none focus:shadow-[0_0_12px_rgba(7,169,104,0.2)]">
+                    <input id="shortcutName" type="text" placeholder="Ex: Douanes Cameroun" class="w-full bg-surface-container rounded-xl px-4 py-3 text-sm font-body text-on-surface placeholder-on-surface-variant/40 border border-outline-variant/20 focus:border-primary/50 focus:outline-none">
                 </div>
                 <div class="flex flex-col gap-1.5">
                     <label class="text-[10px] font-headline tracking-widest uppercase text-on-surface-variant">URL</label>
-                    <input id="shortcutUrl" type="text" placeholder="Ex: douanes.gov.cm"
-                        class="w-full bg-surface-container rounded-xl px-4 py-3 text-sm font-body text-on-surface placeholder-on-surface-variant/40 border border-outline-variant/20 focus:border-primary/50 focus:outline-none focus:shadow-[0_0_12px_rgba(7,169,104,0.2)]">
+                    <input id="shortcutUrl" type="text" placeholder="Ex: douanes.gov.cm" class="w-full bg-surface-container rounded-xl px-4 py-3 text-sm font-body text-on-surface placeholder-on-surface-variant/40 border border-outline-variant/20 focus:border-primary/50 focus:outline-none">
                 </div>
-                <button id="shortcutConfirm"
-                    class="mt-2 w-full py-3 rounded-xl bg-primary text-[#0a0f0d] text-xs font-headline tracking-widest uppercase hover:bg-primary-light font-semibold" style="transition: background-color 0.2s ease;">
-                    Ajouter
-                </button>
+                <button id="shortcutConfirm" class="mt-2 w-full py-3 rounded-xl bg-primary text-[#0a0f0d] text-xs font-headline tracking-widest uppercase hover:bg-primary-light font-semibold" style="transition:background-color .2s">Ajouter</button>
             </div>
         </div>
     </div>
 
-    <!-- Arrière-plan décoratif -->
+    <!-- Arrière-plan -->
     <div class="fixed inset-0 pointer-events-none -z-10">
-        <!-- Arrière-plan solide pour le thème "Aucun" -->
-        <div id="solidBg" class="absolute inset-0 opacity-0 transition-opacity duration-500"
-            style="background: linear-gradient(135deg, #0a0f0d 0%, #121c17 100%);">
+        <div id="solidBg" class="absolute inset-0 opacity-0 transition-opacity duration-500" style="background:linear-gradient(135deg,#0a0f0d 0%,#121c17 100%)">
             <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/25 rounded-full blur-[150px]"></div>
         </div>
-        <!-- Arrière-plan image -->
-        <img id="bgImage"
-            alt="Thème d'arrière-plan sélectionné"
-            class="bg-image absolute inset-0 w-full h-full object-cover opacity-100"
-            src="">
+        <img id="bgImage" alt="Thème" class="bg-image absolute inset-0 w-full h-full object-cover opacity-100" src="">
     </div>
-</body>
 
+</body>
 </html>
