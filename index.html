@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html class="dark" lang="en">
-
+ 
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
@@ -54,11 +54,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@200;300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-
+ 
     <script>
         const DEFAULT_LOCATION = { city: 'Douala', country: 'CM', lat: 4.0511, lon: 9.7679 };
         let userLocation = { ...DEFAULT_LOCATION };
-
+ 
         /* ─── Cache coordonnées ─────────────────────────────────────────── */
         function loadCachedLocation() {
             try {
@@ -75,7 +75,7 @@
         function saveCachedLocation(lat, lon) {
             localStorage.setItem('pyramid_location', JSON.stringify({ lat, lon, timestamp: Date.now() }));
         }
-
+ 
         /* ─── Géolocalisation ───────────────────────────────────────────── */
         function getUserLocation() {
             return new Promise((resolve) => {
@@ -90,7 +90,7 @@
                 );
             });
         }
-
+ 
         /* ─── Géocodage inverse (Nominatim) ─────────────────────────────── */
         async function reverseGeocode(lat, lon) {
             try {
@@ -119,12 +119,12 @@
                 return { city: DEFAULT_LOCATION.city, country: 'Cameroun' };
             }
         }
-
+ 
         function updateLocationDisplay(city, country) {
             const el = document.getElementById('location-display');
             if (el) el.textContent = `${city}, ${country}`;
         }
-
+ 
         /* ─── Horloge ───────────────────────────────────────────────────── */
         function updateClock() {
             const now = new Date();
@@ -135,7 +135,7 @@
             const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
             document.getElementById('date').textContent = `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]}`;
         }
-
+ 
         /* ─── Descriptions WMO complètes en français ────────────────────── */
         const WMO_DATA = {
             0:  { desc: 'Ciel dégagé',           icon: 'fa-sun',                 color: '#FFD700' },
@@ -168,11 +168,11 @@
             99: { desc: 'Orage violent',          icon: 'fa-cloud-bolt',          color: '#FF8C00' },
         };
         const WMO_FALLBACK = { desc: 'Nuageux', icon: 'fa-cloud', color: '#a8c4b8' };
-
+ 
         function getWMO(code) {
             return WMO_DATA[code] || WMO_FALLBACK;
         }
-
+ 
         /* ─── Applique les données météo au widget ──────────────────────── */
         function applyWeather(temp, feel, hum, wind, code) {
             const wmo = getWMO(code);
@@ -194,7 +194,7 @@
                 `;
             }
         }
-
+ 
         /* ─── Cache météo (10 min) ──────────────────────────────────────── */
         function loadCachedWeather() {
             try {
@@ -208,7 +208,7 @@
                 return false;
             } catch { return false; }
         }
-
+ 
         /* ─── Fetch météo Open-Meteo (données complètes) ────────────────── */
         async function fetchWeather() {
             loadCachedWeather();
@@ -241,9 +241,9 @@
                 }
             }
         }
-
+ 
         document.addEventListener('DOMContentLoaded', function () {
-
+ 
             /* ── Thèmes ─────────────────────────────────────────────────── */
             const bgImage    = document.getElementById('bgImage');
             const customBtn  = document.getElementById('customBtn');
@@ -251,7 +251,7 @@
             const closePanel = document.getElementById('closePanel');
             const items = document.querySelectorAll('.theme-item');
             let isOpen = false;
-
+ 
             function applySolidBackground() {
                 const sb = document.getElementById('solidBg');
                 bgImage.style.opacity = '0';
@@ -262,13 +262,13 @@
             customBtn.addEventListener('click', e => { e.stopPropagation(); isOpen = !isOpen; themePanel.style.transform = isOpen ? 'translateY(0)' : 'translateY(100%)'; });
             closePanel.addEventListener('click', () => { isOpen = false; themePanel.style.transform = 'translateY(100%)'; });
             document.addEventListener('click', e => { if (isOpen && !themePanel.contains(e.target) && !customBtn.contains(e.target)) { isOpen = false; themePanel.style.transform = 'translateY(100%)'; } });
-
+ 
             const savedTheme = localStorage.getItem('selectedTheme');
             const solidBg    = document.getElementById('solidBg');
             if (!savedTheme) { applySolidBackground(); document.querySelector('.theme-item[data-bg="none"]')?.classList.add('active'); }
             else if (savedTheme === 'none') { applySolidBackground(); }
             else { solidBg.style.opacity = '0'; bgImage.src = savedTheme; bgImage.style.opacity = '0.6'; }
-
+ 
             items.forEach(item => {
                 const bg = item.getAttribute('data-bg');
                 if (bg === savedTheme) item.classList.add('active');
@@ -284,70 +284,87 @@
                     }
                 });
             });
-
+ 
             document.body.classList.add('loaded');
             updateClock();
-
+ 
             /* ── Init localisation + météo ──────────────────────────────── */
             (async function initLocationAndWeather() {
                 try {
                     const c = localStorage.getItem('pyramid_location_name');
                     if (c) { const { city, country } = JSON.parse(c); updateLocationDisplay(city, country); }
                 } catch {}
-
+ 
                 if (!loadCachedLocation()) {
                     const loc = await getUserLocation();
                     userLocation = loc;
                 }
-
+ 
                 fetchWeather();
                 reverseGeocode(userLocation.lat, userLocation.lon)
                     .then(({ city, country }) => updateLocationDisplay(city, country));
             })();
-
+ 
             setInterval(updateClock, 1000);
             setInterval(fetchWeather, 600000);
-
+ 
             /* ── Carousel infini avec flèches ───────────────────────────── */
             (function () {
                 const track = document.getElementById('carousel-track');
                 const vp    = document.getElementById('carousel-viewport');
                 if (!track || !vp) return;
-
-                // Récupère les items originaux
+ 
+                const GAP = 18; // px — doit correspondre au gap CSS du .carousel-track
+ 
+                // Garde les items originaux du DOM
                 const originals  = Array.from(track.querySelectorAll('.carousel-item'));
                 const ORIG_COUNT = originals.length;
                 if (ORIG_COUNT === 0) return;
-
-                // Triple clonage : [clone avant] [originaux] [clone après]
-                originals.forEach(el => {
-                    const before = el.cloneNode(true); before.setAttribute('aria-hidden', 'true');
-                    track.insertBefore(before, track.firstChild);
-                });
-                originals.forEach(el => {
-                    const after = el.cloneNode(true); after.setAttribute('aria-hidden', 'true');
-                    track.appendChild(after);
-                });
-
-                const GAP    = 18; // doit correspondre au gap CSS
-                const ITEM_W = () => {
-                    const first = track.querySelector('.carousel-item');
-                    return first ? first.offsetWidth + GAP : 62;
-                };
-                const CLONE_W = () => ORIG_COUNT * ITEM_W();
-
+ 
+                // Calcule combien de séries complètes on doit cloner pour
+                // couvrir au moins 2× la largeur du viewport, quelle que soit
+                // la résolution d'écran.
+                function buildClones() {
+                    // Retire tous les clones existants
+                    track.querySelectorAll('[aria-hidden="true"]').forEach(el => el.remove());
+ 
+                    const itemW   = originals[0].offsetWidth + GAP;
+                    const setW    = ORIG_COUNT * itemW;
+                    const vpW     = vp.offsetWidth || window.innerWidth;
+                    // Nombre de séries supplémentaires nécessaires pour remplir
+                    // au moins 2 viewports de chaque côté
+                    const copies  = Math.ceil((vpW * 2) / setW) + 1;
+ 
+                    // Insère `copies` séries avant et après les originaux
+                    for (let c = 0; c < copies; c++) {
+                        originals.forEach(el => {
+                            const clone = el.cloneNode(true);
+                            clone.setAttribute('aria-hidden', 'true');
+                            track.insertBefore(clone, track.firstChild);
+                        });
+                    }
+                    for (let c = 0; c < copies; c++) {
+                        originals.forEach(el => {
+                            const clone = el.cloneNode(true);
+                            clone.setAttribute('aria-hidden', 'true');
+                            track.appendChild(clone);
+                        });
+                    }
+                    return { itemW, setW, copies };
+                }
+ 
+                let itemW = 0, setW = 0, copies = 0;
                 let pos     = 0;
-                let speed   = 0.55;   // px / frame auto-scroll
+                let speed   = 0.55;   // px / frame
                 let isAuto  = true;
                 let isDrag  = false;
                 let dragSX  = 0, dragSPos = 0;
                 let didDrag = false;
-
+ 
                 function setPos(instant) {
                     if (instant) {
                         track.style.transition = 'none';
                         track.style.transform  = `translateX(${pos}px)`;
-                        // Laisse le navigateur appliquer, puis réactive les transitions
                         requestAnimationFrame(() => requestAnimationFrame(() => {
                             track.style.transition = '';
                         }));
@@ -355,18 +372,21 @@
                         track.style.transform = `translateX(${pos}px)`;
                     }
                 }
-
+ 
+                // Recentre sans saut visible quand on sort de la zone "milieu"
                 function reflow() {
-                    const cw = CLONE_W();
-                    if (pos <= -cw * 2) { pos += cw; setPos(true); }
-                    if (pos >= 0)        { pos -= cw; setPos(true); }
+                    if (pos <= -(setW * (copies + 1))) { pos += setW * copies; setPos(true); }
+                    if (pos >= -(setW * (copies - 1))) { pos -= setW * copies; setPos(true); }
                 }
-
+ 
                 function init() {
-                    pos = -CLONE_W(); // démarre sur la série du milieu
+                    const r = buildClones();
+                    itemW = r.itemW; setW = r.setW; copies = r.copies;
+                    // Démarre sur la série originale (milieu du track)
+                    pos = -(setW * copies);
                     setPos(true);
                 }
-
+ 
                 function loop() {
                     if (isAuto && !isDrag) {
                         pos -= speed;
@@ -375,21 +395,21 @@
                     }
                     requestAnimationFrame(loop);
                 }
-
+ 
                 function stepBy(n) {
                     isAuto = false;
                     clearTimeout(window._carouselResumeTimer);
-                    pos -= n * ITEM_W();
+                    pos -= n * itemW;
                     reflow();
                     track.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
                     track.style.transform  = `translateX(${pos}px)`;
                     setTimeout(() => { track.style.transition = ''; }, 400);
                     window._carouselResumeTimer = setTimeout(() => { isAuto = true; }, 2500);
                 }
-
+ 
                 document.getElementById('carousel-prev').addEventListener('click', () => stepBy(-1));
                 document.getElementById('carousel-next').addEventListener('click', () => stepBy(1));
-
+ 
                 // Drag pointer
                 vp.addEventListener('pointerdown', e => {
                     isDrag = true; didDrag = false; isAuto = false;
@@ -402,13 +422,14 @@
                     const dx = e.clientX - dragSX;
                     if (Math.abs(dx) > 5) didDrag = true;
                     pos = dragSPos + dx;
+                    reflow();
                     track.style.transform = `translateX(${pos}px)`;
                 });
                 vp.addEventListener('pointerup', e => {
                     if (!isDrag) return;
                     isDrag = false;
                     const dx = e.clientX - dragSX;
-                    if (Math.abs(dx) > 40) pos = dragSPos - Math.sign(-dx) * ITEM_W();
+                    if (Math.abs(dx) > 40) pos = dragSPos - Math.sign(-dx) * itemW;
                     reflow();
                     track.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
                     track.style.transform  = `translateX(${pos}px)`;
@@ -418,24 +439,26 @@
                     isDrag = false; isAuto = true;
                     reflow();
                 });
-
+ 
                 // Bloque les clics si l'utilisateur a dragué
-                vp.addEventListener('click', e => { if (didDrag) { e.preventDefault(); e.stopPropagation(); didDrag = false; } }, true);
-
+                vp.addEventListener('click', e => {
+                    if (didDrag) { e.preventDefault(); e.stopPropagation(); didDrag = false; }
+                }, true);
+ 
                 // Pause au survol (desktop)
                 vp.addEventListener('mouseenter', () => { isAuto = false; });
                 vp.addEventListener('mouseleave', () => { isAuto = true; });
-
-                // Réinit si la taille change
+ 
+                // Réinit propre au resize
                 window.addEventListener('resize', () => {
                     clearTimeout(window._carouselResizeTimer);
                     window._carouselResizeTimer = setTimeout(init, 150);
                 });
-
+ 
                 init();
                 loop();
             })();
-
+ 
             /* ── Recherche ──────────────────────────────────────────────── */
             const searchInput = document.getElementById('searchInput');
             const searchBtn   = document.getElementById('searchBtn');
@@ -447,7 +470,7 @@
             }
             searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
             searchBtn.addEventListener('click', doSearch);
-
+ 
             /* ── Raccourcis utilisateur ─────────────────────────────────── */
             const addBtn          = document.getElementById('addShortcutBtn');
             const shortcutModal   = document.getElementById('shortcutModal');
@@ -457,11 +480,11 @@
             const shortcutUrl     = document.getElementById('shortcutUrl');
             const siteGrid        = document.getElementById('siteGrid');
             const MAX_SC = 7;
-
+ 
             function loadSC() { try { return JSON.parse(localStorage.getItem('pyramid_shortcuts') || '[]'); } catch { return []; } }
             function saveSC(a) { localStorage.setItem('pyramid_shortcuts', JSON.stringify(a)); }
             function refreshAddBtn() { addBtn.style.display = loadSC().length >= MAX_SC ? 'none' : 'flex'; }
-
+ 
             function renderShortcuts() {
                 document.querySelectorAll('.user-shortcut').forEach(el => el.remove());
                 loadSC().forEach((sc, i) => {
@@ -485,7 +508,7 @@
                     btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showSCMenu(parseInt(btn.dataset.index), btn); });
                 });
             }
-
+ 
             let ctxMenuIdx = null;
             function showSCMenu(index, trigger) {
                 closeSCMenu();
@@ -511,7 +534,7 @@
             }
             function closeSCMenuHandler(e) { const m = document.getElementById('scMenu'); if (m && !m.contains(e.target)) closeSCMenu(); }
             function closeSCMenu() { document.getElementById('scMenu')?.remove(); document.removeEventListener('click', closeSCMenuHandler); ctxMenuIdx = null; }
-
+ 
             function editSC(index) {
                 const a = loadSC(), sc = a[index]; if (!sc) return;
                 shortcutName.value = sc.name; shortcutUrl.value = sc.url.replace(/^https?:\/\//, '');
@@ -526,7 +549,7 @@
                 };
                 shortcutModal.classList.remove('hidden'); shortcutModal.classList.add('flex'); shortcutName.focus();
             }
-
+ 
             addBtn.addEventListener('click', () => {
                 if (loadSC().length >= MAX_SC) { alert('Maximum de 7 raccourcis atteint.'); return; }
                 shortcutModal.classList.remove('hidden'); shortcutModal.classList.add('flex'); shortcutName.focus();
@@ -548,20 +571,19 @@
             renderShortcuts();
         });
     </script>
-
     <style>
         /* ── Entrée page ── */
         body { opacity: 0; transform: scale(1.02); transition: opacity .8s ease, transform .8s ease; }
         body.loaded { opacity: 1; transform: scale(1); }
-
+ 
         /* ═══ ÉCRAN UNIQUE — aucun scroll ═══ */
         html, body { height: 100%; overflow: hidden; }
         #main-page { height: 100dvh; overflow: hidden; }
-
+ 
         /* ── Horloge responsive ── */
         #clock { font-size: clamp(2.2rem, 11vw, 6.5rem); line-height: 1; }
         #date  { font-size: clamp(0.5rem, 1.4vw, 0.7rem); margin-top: 3px; }
-
+ 
         /* ── Écrans très courts ── */
         @media (max-height: 520px) {
             #clock { font-size: 1.8rem !important; }
@@ -572,7 +594,7 @@
         @media (max-height: 650px) {
             #clock { font-size: 2.2rem !important; }
         }
-
+ 
         /* ── Widget météo — uniquement à gauche, taille compacte ── */
         .weather-widget-wrap {
             /* Positionné à gauche, ne s'étire jamais */
@@ -593,28 +615,28 @@
             #weather-meta { gap: 4px !important; }
             #weather-meta span { font-size: 7px !important; }
         }
-
+ 
         #weather-icon i, #closePanel i { display: inline-flex; align-items: center; justify-content: center; }
         #location-display { transition: opacity .4s ease; }
-
+ 
         .card-hover { transition: box-shadow .3s ease; }
         .card-hover:hover { box-shadow: 0 20px 40px rgba(0,0,0,.4); }
-
+ 
         .shortcut-menu-btn { opacity: 0; pointer-events: none; }
         .user-shortcut:hover .shortcut-menu-btn { opacity: 1; pointer-events: auto; }
         .shortcut-menu-btn:hover { background: rgba(7,169,104,.15) !important; border-color: rgba(7,169,104,.4) !important; }
         .shortcut-menu-btn:hover svg { color: #07a968 !important; }
         #scMenu { animation: menuFadeIn .15s ease-out; }
         @keyframes menuFadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
-
+ 
         .search-focus:focus-within { box-shadow: 0 0 25px rgba(7,169,104,.3); border-color: rgba(7,169,104,.5); }
-
+ 
         a, button, span, img, div[class*="border"], div[class*="bg-"], .glass-widget, .glass-button {
             transition: color .2s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
         }
         .fixed.inset-0 img { transition: opacity .5s ease; }
         .bg-image { transition: opacity .6s ease, transform .6s ease; }
-
+ 
         /* ── Scrollbars ── */
         ::-webkit-scrollbar { width: 10px; height: 10px; }
         ::-webkit-scrollbar-track { background: #000; }
@@ -623,39 +645,45 @@
         #themePanel::-webkit-scrollbar { height: 8px; }
         #themePanel::-webkit-scrollbar-track { background: #000; }
         #themePanel::-webkit-scrollbar-thumb { background: #07a968; border-radius: 10px; }
-
+ 
         /* ── Thèmes ── */
         .theme-item.active .active-indicator { opacity:1; box-shadow: 0 0 20px rgba(7,169,104,.6); }
         .theme-item { transition: transform .3s ease, box-shadow .3s ease; }
         .theme-item:hover { transform: scale(1.05); }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
-
+ 
         /* ══════════════════════════════════════
            CAROUSEL INFINI
         ══════════════════════════════════════ */
         #ministries-section {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
             position: relative;
             padding: 2px 10px;
             overflow: visible;
+            /* Largeur max réduite : le carousel ne prend pas toute la page */
+            max-width: 780px;
+            margin: 0 auto;
+            width: 100%;
         }
-
+ 
         /* Viewport masqué sur les bords */
         .carousel-viewport {
             flex: 1;
+            min-width: 0;
             overflow: hidden;
             position: relative;
             cursor: grab;
             user-select: none;
             -webkit-user-select: none;
-            mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
-            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%);
         }
         .carousel-viewport.is-dragging { cursor: grabbing; }
-
+ 
         /* Track : pas de gap CSS car on gère en JS */
         .carousel-track {
             display: flex;
@@ -663,7 +691,7 @@
             width: max-content;
             will-change: transform;
         }
-
+ 
         /* Flèches : toujours visibles */
         .carousel-arrow {
             display: flex;
@@ -687,14 +715,14 @@
             border-color: rgba(7,169,104,.55);
             background: rgba(7,169,104,.12);
         }
-
+ 
         /* ── Glass ── */
         .glass-button {
             background: rgba(15,23,19,.5);
             backdrop-filter: blur(16px);
             border: 1px solid rgba(45,74,61,.25);
         }
-
+ 
         :root {
             --bg: #0a0f0d;
             --surface-low: #0f1713;
@@ -708,9 +736,9 @@
         #shortcutModal input:focus { border-color: rgba(7,169,104,.5); box-shadow: 0 0 12px rgba(7,169,104,.2); }
     </style>
 </head>
-
+ 
 <body class="bg-background text-on-surface font-body">
-
+ 
     <!-- ══════════════════════════════════════════════════════════════
          BARRE SUPÉRIEURE FIXE
          Le widget météo est aligné à gauche et ne prend que la place
@@ -718,35 +746,35 @@
          Les boutons Play & Mail restent à droite.
     ═══════════════════════════════════════════════════════════════ -->
     <div class="fixed top-0 left-0 right-0 px-5 py-3.5 flex justify-between items-start z-50 pointer-events-none">
-
+ 
         <!-- Widget Météo : ancré à gauche, largeur auto -->
         <div class="weather-widget-wrap pointer-events-auto">
             <div class="glass-widget px-4 py-2 rounded-2xl flex items-center gap-3">
-
+ 
                 <!-- Icône météo -->
                 <span id="weather-icon"
                       class="w-9 h-9 rounded-full flex items-center justify-center border-2 border-primary bg-surface/50 flex-shrink-0"
                       style="font-size:18px;">
                     <i class="fas fa-sun" style="color:#ffffff;"></i>
                 </span>
-
+ 
                 <!-- Données -->
                 <div>
                     <!-- Température -->
                     <p id="temperature" class="text-lg font-headline font-medium leading-none">--°C</p>
-
+ 
                     <!-- Description WMO en français -->
                     <p id="weather-desc"
                        class="text-[9px] uppercase tracking-wider text-primary/80 mt-0.5 leading-none">
                         Chargement…
                     </p>
-
+ 
                     <!-- Ville, Pays -->
                     <p id="location-display"
                        class="text-[9px] uppercase tracking-widest text-on-surface-variant mt-0.5">
                         Douala, Cameroun
                     </p>
-
+ 
                     <!-- Méta : humidité · vent · ressenti -->
                     <div id="weather-meta"
                          class="flex items-center gap-2 mt-1 flex-wrap">
@@ -761,10 +789,10 @@
                         </span>
                     </div>
                 </div>
-
+ 
             </div>
         </div>
-
+ 
         <!-- Boutons Play & Mail (droite) -->
         <div class="flex items-center gap-3 pointer-events-auto">
             <div class="flex items-center gap-3 px-3 py-2 rounded-lg border border-outline-variant/10 bg-surface-container-low/30">
@@ -780,16 +808,16 @@
             </div>
         </div>
     </div>
-
+ 
     <!-- ══════════════════════════════════════════════════════════════
          PAGE PRINCIPALE
     ═══════════════════════════════════════════════════════════════ -->
     <main id="main-page"
           class="w-full flex flex-col items-center overflow-hidden"
           style="padding-top: 80px; padding-bottom: 60px;">
-
+ 
         <div class="flex-1 w-full flex flex-col items-center justify-evenly overflow-hidden">
-
+ 
             <!-- ① Horloge & Date -->
             <section class="text-center select-none">
                 <h1 id="clock" class="font-headline font-light tracking-tighter" style="color:#fff;">12:48</h1>
@@ -797,7 +825,7 @@
                     jeudi 7 avril
                 </p>
             </section>
-
+ 
             <!-- ② Carousel Ministères — scroll infini + flèches -->
             <section id="ministries-section" class="w-full">
                 <!-- Flèche gauche — toujours visible -->
@@ -806,7 +834,7 @@
                         <polyline points="15 18 9 12 15 6"/>
                     </svg>
                 </button>
-
+ 
                 <div class="carousel-viewport" id="carousel-viewport">
                     <div class="carousel-track" id="carousel-track">
                         <!-- Les items originaux — le JS en fera 3 copies pour le scroll infini -->
@@ -844,7 +872,7 @@
                         </a>
                     </div>
                 </div>
-
+ 
                 <!-- Flèche droite — toujours visible -->
                 <button id="carousel-next" class="carousel-arrow" aria-label="Suivant">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -852,7 +880,7 @@
                     </svg>
                 </button>
             </section>
-
+ 
             <!-- ③ Barre de recherche -->
             <section class="w-full max-w-lg px-5">
                 <div class="relative group">
@@ -864,7 +892,7 @@
                     </div>
                 </div>
             </section>
-
+ 
             <!-- ④ Sites Partenaires -->
             <section class="w-full max-w-5xl px-5">
                 <div class="grid grid-cols-4 md:grid-cols-7 gap-2.5 md:gap-4 items-center justify-items-center">
@@ -877,7 +905,7 @@
                     <a href="https://www.nexah.net/" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Nexah"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.nexah.net" onerror="this.src='assets/logo/nexah.png';this.onerror=null;" class="w-full h-full object-contain" alt="Nexah"></a>
                 </div>
             </section>
-
+ 
             <!-- ⑤ Raccourcis Utilisateur -->
             <section class="w-full max-w-5xl px-5">
                 <div id="siteGrid" class="grid grid-cols-4 md:grid-cols-7 gap-2.5 md:gap-4 items-center justify-items-center">
@@ -889,10 +917,10 @@
                     </button>
                 </div>
             </section>
-
+ 
         </div>
     </main>
-
+ 
     <!-- Bouton Personnaliser -->
     <div class="fixed bottom-5 right-5 z-40">
         <button id="customBtn" class="flex items-center gap-2 px-4 py-2.5 bg-surface-bright rounded-xl border border-outline-variant/15 hover:border-primary/40 hover:shadow-primary-glow glass-button group">
@@ -900,7 +928,7 @@
             <span class="text-[10px] font-headline tracking-[.2em] uppercase text-on-surface-variant group-hover:text-primary">Personnaliser</span>
         </button>
     </div>
-
+ 
     <!-- Panneau Thèmes -->
     <div id="themePanel" class="fixed bottom-0 left-0 w-full bg-surface-container-low/90 backdrop-blur-xl border-t border-outline-variant/20 transform translate-y-full transition-transform duration-500 z-50">
         <div class="flex items-center justify-between px-8 py-4 border-b border-outline-variant/20">
@@ -942,7 +970,7 @@
             </div>
         </div>
     </div>
-
+ 
     <!-- Modal Raccourci -->
     <div id="shortcutModal" class="hidden fixed inset-0 z-[100] items-center justify-center bg-black/60 backdrop-blur-sm">
         <div class="bg-surface-container-low border border-outline-variant/20 rounded-2xl p-8 w-full max-w-sm mx-4 shadow-[0_32px_64px_rgba(0,16,8,0.5)]">
@@ -963,7 +991,7 @@
             </div>
         </div>
     </div>
-
+ 
     <!-- Arrière-plan -->
     <div class="fixed inset-0 pointer-events-none -z-10">
         <div id="solidBg" class="absolute inset-0 opacity-0 transition-opacity duration-500" style="background:linear-gradient(135deg,#0a0f0d 0%,#121c17 100%)">
@@ -971,6 +999,6 @@
         </div>
         <img id="bgImage" alt="Thème" class="bg-image absolute inset-0 w-full h-full object-cover opacity-100" src="">
     </div>
-
+ 
 </body>
 </html>
