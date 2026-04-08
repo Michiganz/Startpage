@@ -5,7 +5,6 @@
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Nouvel onglet</title>
-    <link rel="shortcut icon" href="product_logo(1).svg" type="image/svg">
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -59,6 +58,11 @@
     <script>
         const DEFAULT_LOCATION = { city: 'Douala', country: 'CM', lat: 4.0511, lon: 9.7679 };
         let userLocation = { ...DEFAULT_LOCATION };
+
+        /*: durées de cache */
+        const WEATHER_CACHE_MS  = 3 * 60 * 1000;   // 3 minutes
+        const LOCATION_CACHE_MS = 24 * 60 * 60 * 1000; // 24 h (nom de ville)
+        const GEO_CACHE_MS      = 5 * 60 * 1000;   // 5 min (coordonnées GPS)
  
         /* ─── Cache coordonnées ─────────────────────────────────────────── */
         function loadCachedLocation() {
@@ -66,7 +70,8 @@
                 const c = localStorage.getItem('pyramid_location');
                 if (!c) return false;
                 const { lat, lon, timestamp } = JSON.parse(c);
-                if (Date.now() - timestamp < 86400000) {
+                /*  expiration 5 min pour les coords */
+                if (Date.now() - timestamp < GEO_CACHE_MS) {
                     userLocation = { ...DEFAULT_LOCATION, lat, lon };
                     return true;
                 }
@@ -77,17 +82,18 @@
             localStorage.setItem('pyramid_location', JSON.stringify({ lat, lon, timestamp: Date.now() }));
         }
  
-        /* ─── Géolocalisation ───────────────────────────────────────────── */
+        /* ─── Géolocalisation : options haute précision + timeout court ── */
         function getUserLocation() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) { resolve(DEFAULT_LOCATION); return; }
                 navigator.geolocation.getCurrentPosition(
                     ({ coords: { latitude: lat, longitude: lon } }) => {
                         saveCachedLocation(lat, lon);
-                        resolve({ ...DEFAULT_LOCATION, lat, lon });
+                        userLocation = { ...DEFAULT_LOCATION, lat, lon };
+                        resolve(userLocation);
                     },
-                    () => resolve(DEFAULT_LOCATION),
-                    { enableHighAccuracy: false, timeout: 5000, maximumAge: 300000 }
+                    () => resolve(userLocation), // garde les coords actuelles en cas d'échec
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: GEO_CACHE_MS }
                 );
             });
         }
@@ -98,7 +104,7 @@
                 const c = localStorage.getItem('pyramid_location_name');
                 if (c) {
                     const { city, country, timestamp } = JSON.parse(c);
-                    if (Date.now() - timestamp < 86400000) return { city, country };
+                    if (Date.now() - timestamp < LOCATION_CACHE_MS) return { city, country };
                 }
             } catch {}
             try {
@@ -187,13 +193,13 @@
             if (descEl) descEl.textContent = wmo.desc;
         }
  
-        /* ─── Cache météo (10 min) ──────────────────────────────────────── */
+        /* ─── Cache météo: 3 min ────────────────────────────── */
         function loadCachedWeather() {
             try {
                 const c = localStorage.getItem('pyramid_weather');
                 if (!c) return false;
                 const { temp, feel, hum, wind, code, timestamp } = JSON.parse(c);
-                if (Date.now() - timestamp < 600000) {
+                if (Date.now() - timestamp < WEATHER_CACHE_MS) {
                     applyWeather(temp, feel ?? temp, hum ?? 0, wind ?? 0, code ?? 0);
                     return true;
                 }
@@ -201,9 +207,17 @@
             } catch { return false; }
         }
  
-        /* ─── Fetch météo Open-Meteo ────────────────────────────────────── */
+        /* ─── Fetch météo Open-Meteo : relance la géoloc avant chaque appel ── */
         async function fetchWeather() {
+            /* Affiche immédiatement le cache pendant que la fraîche arrive */
             loadCachedWeather();
+
+            /* on re-demande la position GPS à chaque cycle */
+            try {
+                const freshLoc = await getUserLocation();
+                userLocation = freshLoc;
+            } catch { /* garde userLocation courante */ }
+
             try {
                 const res = await fetch(
                     `https://api.open-meteo.com/v1/forecast` +
@@ -222,6 +236,11 @@
                 localStorage.setItem('pyramid_weather', JSON.stringify({
                     temp, feel, hum, wind, code, timestamp: Date.now()
                 }));
+
+                /*  met à jour le nom de ville en parallèle */
+                reverseGeocode(userLocation.lat, userLocation.lon)
+                    .then(({ city, country }) => updateLocationDisplay(city, country));
+
             } catch {
                 console.warn('[Météo] Hors-ligne — affichage du cache');
                 if (!loadCachedWeather()) {
@@ -280,32 +299,33 @@
             document.body.classList.add('loaded');
             updateClock();
  
-            /* ── Init localisation + météo ──────────────────────────────── */
+            /* ── Init localisation + météo: appel direct, pas de cache coords obligatoire ── */
             (async function initLocationAndWeather() {
+                /* Affiche le nom de ville mis en cache immédiatement */
                 try {
                     const c = localStorage.getItem('pyramid_location_name');
                     if (c) { const { city, country } = JSON.parse(c); updateLocationDisplay(city, country); }
                 } catch {}
- 
-                if (!loadCachedLocation()) {
-                    const loc = await getUserLocation();
-                    userLocation = loc;
-                }
- 
+
+                /*  charge coords en cache si dispo, sinon valeurs par défaut,
+                   puis lance fetchWeather() qui redemandera la géoloc en interne */
+                loadCachedLocation();
+
+                /* Premier appel immédiat — fetchWeather() ira chercher la géoloc lui-même */
                 fetchWeather();
-                reverseGeocode(userLocation.lat, userLocation.lon)
-                    .then(({ city, country }) => updateLocationDisplay(city, country));
             })();
  
             setInterval(updateClock, 1000);
-            setInterval(fetchWeather, 600000);
- 
+
+            /*  rafraîchissement toutes les 3 minutes (180 000 ms) */
+            setInterval(fetchWeather, 3 * 60 * 1000);
+
             /* ── Alternance top-left : météo ↔ horloge (10 s) ──────────── */
             (function () {
                 const weatherWrap = document.getElementById('topleft-weather');
                 const clockWrap   = document.getElementById('topleft-clock-wrap');
                 let showing = 'weather';
- 
+
                 function fadeTo(hideEl, showEl) {
                     hideEl.style.opacity = '0';
                     setTimeout(() => {
@@ -315,7 +335,7 @@
                         showEl.style.opacity = '1';
                     }, 350);
                 }
- 
+
                 setInterval(() => {
                     if (showing === 'weather') {
                         fadeTo(weatherWrap, clockWrap);
@@ -590,7 +610,7 @@
             .partner-item { width: 32px !important; height: 32px !important; }
             .sc-item { width: 44px !important; height: 44px !important; }
         }
- 
+
         /* ── Widget météo compact ── */
         .weather-widget-wrap {
             flex-shrink: 0;
@@ -607,7 +627,7 @@
             #weather-icon, #weather-icon i { font-size: 15px !important; }
             #weather-desc { font-size: 8px !important; }
         }
- 
+
         /* ── Alternance top-left ── */
         #topleft-weather,
         #topleft-clock-wrap {
@@ -635,7 +655,7 @@
             color: #a8c4b8;
             margin-top: 4px;
         }
- 
+
         #weather-icon i, #closePanel i { display: inline-flex; align-items: center; justify-content: center; }
         #location-display { transition: opacity .4s ease; }
  
@@ -702,7 +722,7 @@
             width: max-content;
             will-change: transform;
         }
- 
+
         /* ── Flèches : cachées par défaut, visibles au survol de la section ── */
         .carousel-arrow {
             display: flex;
@@ -718,26 +738,23 @@
             backdrop-filter: blur(8px);
             z-index: 10;
             cursor: pointer;
-            /* Invisible par défaut */
             opacity: 0;
             pointer-events: none;
             transition: opacity .25s ease, color .2s ease, border-color .2s ease, background-color .2s ease;
         }
         .carousel-arrow svg { width: 14px; height: 14px; pointer-events: none; }
- 
-        /* Apparaissent au survol de la section entière */
+
         #ministries-section:hover .carousel-arrow {
             opacity: 1;
             pointer-events: auto;
         }
- 
-        /* Effet hover sur la flèche elle-même */
+
         .carousel-arrow:hover {
             color: #07a968;
             border-color: rgba(7,169,104,.55);
             background: rgba(7,169,104,.12);
         }
- 
+
         .glass-button {
             background: rgba(15,23,19,.5);
             backdrop-filter: blur(16px);
@@ -754,7 +771,7 @@
         body { background-color: var(--bg); color: var(--on-surface); margin: 0; }
         a { text-decoration: none; color: inherit; }
         #shortcutModal input:focus { border-color: rgba(7,169,104,.5); box-shadow: 0 0 12px rgba(7,169,104,.2); }
- 
+
         /* ── Logo Pyramid Browser centré ── */
         #pyramid-logo-center {
             width: clamp(160px, 32vw, 300px);
@@ -768,15 +785,11 @@
 
 <body class="bg-background text-on-surface font-body">
  
-    <!-- ══════════════════════════════════════════════════════════════
-         BARRE SUPÉRIEURE FIXE
-    ═══════════════════════════════════════════════════════════════ -->
+    <!-- BARRE SUPÉRIEURE FIXE -->
     <div class="fixed top-0 left-0 right-0 px-5 py-3.5 flex justify-between items-start z-50 pointer-events-none">
- 
-        <!-- Zone gauche : alternance Météo / Horloge+Date -->
+
         <div class="pointer-events-auto" style="min-width: 0;">
- 
-            <!-- ① Widget Météo (affiché en premier) -->
+
             <div id="topleft-weather" class="weather-widget-wrap" style="opacity:1; display:block;">
                 <div class="glass-widget px-4 py-2 rounded-2xl flex items-center gap-3">
                     <span id="weather-icon"
@@ -797,18 +810,16 @@
                     </div>
                 </div>
             </div>
- 
-            <!-- ② Horloge + Date compacte (cachée initialement) -->
+
             <div id="topleft-clock-wrap" class="glass-widget px-4 py-2 rounded-2xl">
                 <div>
                     <p id="tl-clock">--:--</p>
                     <p id="tl-date"></p>
                 </div>
             </div>
- 
+
         </div>
  
-        <!-- Boutons Play & Mail (droite) -->
         <div class="flex items-center gap-3 pointer-events-auto">
             <div class="flex items-center gap-3 px-3 py-2 rounded-lg border border-outline-variant/10 bg-surface-container-low/30">
                 <button class="flex items-center gap-1.5 group">
@@ -824,16 +835,14 @@
         </div>
     </div>
  
-    <!-- ══════════════════════════════════════════════════════════════
-         PAGE PRINCIPALE
-    ═══════════════════════════════════════════════════════════════ -->
+    <!-- PAGE PRINCIPALE -->
     <main id="main-page"
           class="w-full flex flex-col items-center overflow-hidden"
           style="padding-top: 80px; padding-bottom: 60px;">
  
         <div class="flex-1 w-full flex flex-col items-center justify-evenly overflow-hidden">
  
-            <!-- ① Logo Pyramid Browser -->
+            <!-- ① Logo -->
             <section class="text-center select-none flex items-center justify-center">
                 <svg id="pyramid-logo-center"
                      xmlns="http://www.w3.org/2000/svg"
@@ -860,7 +869,7 @@
                 </svg>
             </section>
  
-            <!-- ② Carousel Ministères -->
+            <!-- ② Carousel -->
             <section id="ministries-section" class="w-full">
                 <button id="carousel-prev" class="carousel-arrow" aria-label="Précédent">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
