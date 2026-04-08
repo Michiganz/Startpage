@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <title>Nouvel onglet</title>
+    <link rel="shortcut icon" href="product_logo(1).svg" type="image/svg">
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -130,7 +131,6 @@
             const now = new Date();
             const h = String(now.getHours()).padStart(2, '0');
             const m = String(now.getMinutes()).padStart(2, '0');
-            /* Horloge centrale (logo section supprimée — conservée pour top-left) */
             const tlClock = document.getElementById('tl-clock');
             if (tlClock) tlClock.textContent = `${h}:${m}`;
             const days   = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
@@ -185,7 +185,6 @@
             if (iconEl) iconEl.innerHTML = `<i class="fas ${wmo.icon}" style="color:#ffffff"></i>`;
             const descEl = document.getElementById('weather-desc');
             if (descEl) descEl.textContent = wmo.desc;
-            /* ── Meta (humidité / vent / ressenti) supprimée ── */
         }
  
         /* ─── Cache météo (10 min) ──────────────────────────────────────── */
@@ -300,24 +299,23 @@
  
             setInterval(updateClock, 1000);
             setInterval(fetchWeather, 600000);
-
+ 
             /* ── Alternance top-left : météo ↔ horloge (10 s) ──────────── */
             (function () {
                 const weatherWrap = document.getElementById('topleft-weather');
                 const clockWrap   = document.getElementById('topleft-clock-wrap');
-                let showing = 'weather'; // état courant
-
+                let showing = 'weather';
+ 
                 function fadeTo(hideEl, showEl) {
                     hideEl.style.opacity = '0';
                     setTimeout(() => {
                         hideEl.style.display = 'none';
                         showEl.style.display = 'flex';
-                        /* force reflow avant la transition */
                         showEl.getBoundingClientRect();
                         showEl.style.opacity = '1';
                     }, 350);
                 }
-
+ 
                 setInterval(() => {
                     if (showing === 'weather') {
                         fadeTo(weatherWrap, clockWrap);
@@ -592,7 +590,7 @@
             .partner-item { width: 32px !important; height: 32px !important; }
             .sc-item { width: 44px !important; height: 44px !important; }
         }
-
+ 
         /* ── Widget météo compact ── */
         .weather-widget-wrap {
             flex-shrink: 0;
@@ -609,7 +607,7 @@
             #weather-icon, #weather-icon i { font-size: 15px !important; }
             #weather-desc { font-size: 8px !important; }
         }
-
+ 
         /* ── Alternance top-left ── */
         #topleft-weather,
         #topleft-clock-wrap {
@@ -621,7 +619,6 @@
             flex-direction: column;
             justify-content: center;
         }
-        /* Horloge compacte dans le widget de gauche */
         #tl-clock {
             font-family: 'Space Grotesk', sans-serif;
             font-size: clamp(1.6rem, 4vw, 2.4rem);
@@ -638,7 +635,7 @@
             color: #a8c4b8;
             margin-top: 4px;
         }
-
+ 
         #weather-icon i, #closePanel i { display: inline-flex; align-items: center; justify-content: center; }
         #location-display { transition: opacity .4s ease; }
  
@@ -705,6 +702,8 @@
             width: max-content;
             will-change: transform;
         }
+ 
+        /* ── Flèches : cachées par défaut, visibles au survol de la section ── */
         .carousel-arrow {
             display: flex;
             align-items: center;
@@ -717,16 +716,28 @@
             border: 1px solid rgba(45,74,61,.35);
             color: #a8c4b8;
             backdrop-filter: blur(8px);
-            transition: color .2s, border-color .2s, background-color .2s;
             z-index: 10;
             cursor: pointer;
+            /* Invisible par défaut */
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .25s ease, color .2s ease, border-color .2s ease, background-color .2s ease;
         }
         .carousel-arrow svg { width: 14px; height: 14px; pointer-events: none; }
+ 
+        /* Apparaissent au survol de la section entière */
+        #ministries-section:hover .carousel-arrow {
+            opacity: 1;
+            pointer-events: auto;
+        }
+ 
+        /* Effet hover sur la flèche elle-même */
         .carousel-arrow:hover {
             color: #07a968;
             border-color: rgba(7,169,104,.55);
             background: rgba(7,169,104,.12);
         }
+ 
         .glass-button {
             background: rgba(15,23,19,.5);
             backdrop-filter: blur(16px);
@@ -743,7 +754,7 @@
         body { background-color: var(--bg); color: var(--on-surface); margin: 0; }
         a { text-decoration: none; color: inherit; }
         #shortcutModal input:focus { border-color: rgba(7,169,104,.5); box-shadow: 0 0 12px rgba(7,169,104,.2); }
-
+ 
         /* ── Logo Pyramid Browser centré ── */
         #pyramid-logo-center {
             width: clamp(160px, 32vw, 300px);
@@ -754,17 +765,17 @@
         }
     </style>
 </head>
- 
+
 <body class="bg-background text-on-surface font-body">
  
     <!-- ══════════════════════════════════════════════════════════════
          BARRE SUPÉRIEURE FIXE
     ═══════════════════════════════════════════════════════════════ -->
     <div class="fixed top-0 left-0 right-0 px-5 py-3.5 flex justify-between items-start z-50 pointer-events-none">
-
+ 
         <!-- Zone gauche : alternance Météo / Horloge+Date -->
         <div class="pointer-events-auto" style="min-width: 0;">
-
+ 
             <!-- ① Widget Météo (affiché en premier) -->
             <div id="topleft-weather" class="weather-widget-wrap" style="opacity:1; display:block;">
                 <div class="glass-widget px-4 py-2 rounded-2xl flex items-center gap-3">
@@ -783,11 +794,10 @@
                            class="text-[9px] uppercase tracking-widest text-on-surface-variant mt-0.5">
                             Douala, Cameroun
                         </p>
-                        <!-- ── Meta supprimée (humidité / vent / ressenti) ── -->
                     </div>
                 </div>
             </div>
-
+ 
             <!-- ② Horloge + Date compacte (cachée initialement) -->
             <div id="topleft-clock-wrap" class="glass-widget px-4 py-2 rounded-2xl">
                 <div>
@@ -795,7 +805,7 @@
                     <p id="tl-date"></p>
                 </div>
             </div>
-
+ 
         </div>
  
         <!-- Boutons Play & Mail (droite) -->
@@ -823,26 +833,22 @@
  
         <div class="flex-1 w-full flex flex-col items-center justify-evenly overflow-hidden">
  
-            <!-- ① Logo Pyramid Browser (remplace l'horloge centrale) -->
+            <!-- ① Logo Pyramid Browser -->
             <section class="text-center select-none flex items-center justify-center">
-                <!-- SVG inline — toutes les couleurs forcées en blanc -->
                 <svg id="pyramid-logo-center"
                      xmlns="http://www.w3.org/2000/svg"
                      viewBox="0 0 164.31 80.9"
                      aria-label="Pyramid Browser">
                   <g fill="white">
-                    <!-- Texte PYRAMID -->
                     <path d="m0,32.59h11.5c2.5,0,4.38.62,5.63,1.85,1.25,1.24,1.87,2.99,1.87,5.27s-.68,4.17-2.04,5.49c-1.36,1.32-3.43,1.98-6.22,1.98h-3.79v8.61H0v-23.21Zm6.95,9.89h1.69c1.33,0,2.27-.24,2.81-.72.54-.48.81-1.09.81-1.84s-.23-1.35-.7-1.85-1.35-.76-2.64-.76h-1.97v5.18Z"/>
                     <path d="m20.36,32.59h7.68l4.51,7.83,4.52-7.83h7.64l-8.7,13.49v9.72h-6.93v-9.72l-8.72-13.49Z"/>
                     <path d="m47.04,55.79v-23.21h11.53c2.14,0,3.77.19,4.9.57,1.13.38,2.04,1.08,2.73,2.11.69,1.03,1.04,2.28,1.04,3.76,0,1.29-.27,2.4-.79,3.33-.53.93-1.26,1.69-2.18,2.27-.59.37-1.4.68-2.43.92.82.29,1.42.57,1.8.86.26.19.62.6,1.11,1.22.48.62.81,1.1.97,1.44l3.35,6.72h-7.82l-3.7-7.09c-.47-.92-.89-1.51-1.25-1.79-.5-.36-1.06-.54-1.69-.54h-.61v9.42h-6.95Zm6.95-13.8h2.92c.32,0,.93-.11,1.83-.32.46-.09.83-.34,1.12-.73.29-.39.44-.84.44-1.35,0-.75-.23-1.32-.69-1.73s-1.32-.6-2.58-.6h-3.04v4.72Z"/>
                     <path d="m85.03,51.96h-7.85l-1.09,3.83h-7.06l8.41-23.21h7.55l8.41,23.21h-7.24l-1.12-3.83Zm-1.44-5.02l-2.47-8.34-2.45,8.34h4.92Z"/>
                     <path d="m95.52,32.59h9.1l3.51,14.12,3.48-14.12h9.09v23.21h-5.67v-17.7l-4.37,17.7h-5.13l-4.36-17.7v17.7h-5.67v-23.21Z"/>
                     <path d="m142.96,32.59h10.28c2.03,0,3.66.28,4.91.85,1.25.57,2.28,1.39,3.09,2.45.81,1.07,1.4,2.31,1.77,3.72.37,1.41.55,2.91.55,4.5,0,2.48-.27,4.4-.82,5.77s-1.3,2.51-2.27,3.43-2.01,1.54-3.12,1.84c-1.52.42-2.89.63-4.12.63h-10.28v-23.21Zm6.92,5.26v12.68h1.69c1.45,0,2.47-.17,3.08-.5s1.09-.91,1.44-1.74.52-2.17.52-4.03c0-2.46-.39-4.14-1.16-5.05-.77-.91-2.06-1.36-3.85-1.36h-1.73Z"/>
-                    <!-- Icône pyramide (triangle + cercle) -->
                     <polygon points="128.48 52.91 145.4 25.88 132.55 12.42 128.48 52.91"/>
                     <polygon points="118.14 20.4 128.48 52.91 132.55 12.42 118.14 20.4" fill="rgba(255,255,255,0.55)"/>
                     <circle cx="134.49" cy="4.23" r="4.23"/>
-                    <!-- Texte "browser" en cursive -->
                     <path d="m100.22,66.77c.71.37,1.23.86,1.57,1.48.34.62.49,1.31.45,2.05-.03.75-.24,1.54-.62,2.38-.38.84-.89,1.67-1.54,2.47-.64.81-1.45,1.57-2.41,2.29-.96.72-2,1.35-3.13,1.88-1.12.53-2.39.94-3.81,1.22-1.41.28-2.86.39-4.33.32-.87-.05-1.67-.15-2.4-.32-.73-.17-1.35-.37-1.85-.6-.51-.23-.97-.52-1.38-.86-.41-.34-.75-.66-1-.97s-.48-.66-.68-1.06c-.2-.4-.35-.74-.44-1.01-.09-.27-.19-.58-.3-.91-.07-.6.21-1.05.83-1.33.49-.23.93-.26,1.34-.1.51.22.59.65.24,1.3-.08.14-.18.28-.3.44.78,2.4,2.26,3.75,4.44,4.07,1.82.26,3.85-.21,6.12-1.4,2.01-1.06,3.72-2.43,5.11-4.11,1.59-1.91,2.29-3.65,2.09-5.22-.03-.25-.08-.48-.16-.7-.22-.65-.84-.96-1.85-.92-.99.35-2.08.66-3.3.95-.41.1-.76.12-1.07.04l-.38-.1c-.16-.04-.24-.12-.26-.24-.01-.12.05-.21.2-.27.78-.29,1.54-.63,2.29-1,.75-.38,1.43-.76,2.05-1.15.62-.39,1.2-.81,1.74-1.24.54-.43.99-.84,1.35-1.24.36-.4.66-.79.9-1.17.24-.38.36-.72.36-1.03s-.09-.58-.26-.8c-.32-.37-.98-.25-2,.34-1.02.59-2.08,1.39-3.2,2.4s-2.04,1.88-2.8,2.62-1.19,1.16-1.29,1.29l-.95,1.13h0c-.93,1.47-1.76,2.82-2.47,4.04-.71,1.22-1.24,2.18-1.59,2.88-.35.7-.63,1.29-.84,1.77s-.33.82-.38.99l-.06.25c-.68-.19-1.26-.56-1.73-1.11-.47-.55-.69-1.08-.68-1.61.12-.5.31-1.07.57-1.7.26-.63.57-1.27.93-1.9.36-.64.75-1.31,1.17-2.01.43-.71.87-1.39,1.31-2.05s.89-1.32,1.32-1.98c.43-.66.84-1.29,1.22-1.87.38-.58.72-1.13,1.01-1.66.29-.53.51-.99.67-1.38s.23-.73.23-1-.12-.46-.33-.56c-.2-.09-.56-.07-1.08.08-.52.14-1.1.37-1.75.67-.65.31-1.32.69-2.01,1.15-.7.46-1.33.93-1.9,1.43s-1.03,1.02-1.38,1.59c-.35.56-.5,1.08-.46,1.56.03.12.14.2.33.23s.37.02.51-.05c.24-.08.49-.22.75-.41.26-.19.49-.36.68-.52.19-.16.43-.3.72-.41.29-.11.59-.16.91-.13.91.19,1.28.54,1.12,1.03-.16.44-.66.83-1.5,1.18-1.17.49-2.37.61-3.61.37-.38-.07-.75-.18-1.11-.33-.54-.2-.91-.47-1.12-.8-.21-.33-.27-.68-.17-1.05.1-.37.27-.73.5-1.06.24-.34.53-.66.87-.96,1.29-1.24,3.01-2.28,5.15-3.14,2.14-.86,3.99-1.24,5.54-1.15,1.54.09,2.39.66,2.57,1.72.11.72-.12,1.64-.69,2.76.88-.82,1.78-1.55,2.7-2.18s1.86-1.1,2.81-1.43c.95-.33,1.77-.39,2.44-.2.33.11.64.3.94.58s.55.61.75,1c.2.39.29.83.26,1.33-.03.49-.17,1-.42,1.51s-.72,1.05-1.4,1.61c-.68.56-1.55,1.09-2.58,1.57.72.06,1.35.21,1.87.45Z"/>
                     <path d="m110.13,71.32c-.09-.03.03-.54.38-1.54.34-1,.43-1.53.28-1.59-.25.1-.61.6-1.09,1.5s-1.04,1.98-1.71,3.25c-.67,1.27-1.27,2.25-1.83,2.95-.16.21-.44.35-.84.43s-.81.09-1.21.05c-.95-.1-1.54-.42-1.79-.95-.24-.53-.19-1.26.15-2.2.08-.24.22-.67.42-1.29.2-.62.38-1.15.52-1.59s.3-.91.46-1.42c.16-.5.29-.9.37-1.18.08-.28.11-.43.1-.45-.08-.09-.02-.19.19-.31.2-.11.4-.2.6-.25.26-.07.57-.11.93-.12.35,0,.69.01,1.01.07.32.06.57.16.75.32.18.16.24.35.18.57-.21.7-.59,1.7-1.12,3.02s-.96,2.38-1.25,3.19-.37,1.22-.23,1.23c.08,0,.46-.61,1.15-1.85.69-1.24,1.36-2.48,2-3.73.03-.04.07-.12.12-.23.1-.19.19-.34.25-.46.06-.11.15-.28.28-.49s.24-.38.35-.5c.1-.12.24-.27.41-.44.17-.17.33-.3.48-.38s.33-.17.55-.23c.22-.07.44-.1.66-.08.22.01.47.06.75.14.28.08.57.21.87.37.58.33.78,1.05.61,2.16-.08.23-.18.46-.32.69-.13.23-.31.46-.53.71-.22.24-.47.43-.75.56s-.6.22-.97.27-.76-.01-1.18-.18Z"/>
                     <path d="m123.92,69.89c.13-.14.34-.2.61-.18.34.02.44.17.3.45-.05.1-.14.21-.26.33-1.05,1.12-2.2,1.57-3.43,1.35-.16.39-.29.71-.39.95-.11.24-.28.6-.52,1.08s-.52.9-.83,1.24c-.31.34-.63.6-.96.78-.71.38-1.55.55-2.53.51s-1.79-.26-2.45-.68c-.29-.18-.46-.59-.52-1.22-.06-.63,0-1.33.19-2.09.18-.77.43-1.52.74-2.25.31-.73.7-1.32,1.17-1.78s.95-.65,1.44-.58c.24.04.44.02.61-.06.17-.08.33-.19.46-.32.14-.14.3-.27.47-.41s.44-.25.78-.34c.34-.09.74-.13,1.2-.12.53.02.97.21,1.34.57.37.36.58.77.63,1.21.04.26.02.56-.05.92-.07.36-.16.68-.26.96-.1.28-.15.44-.15.45.14.05.3.08.47.09s.36,0,.57-.03c.21-.04.43-.13.67-.27.24-.14.46-.33.67-.57Zm-7.04,4.97c.26.07.54.03.82-.12.28-.15.53-.35.74-.59.21-.24.42-.54.63-.89.21-.35.37-.64.47-.87s.2-.46.3-.67c-.2-.04-.38-.08-.55-.13-.17-.05-.35-.13-.53-.23-.18-.1-.33-.22-.42-.35s-.14-.3-.14-.51c0-.21.08-.44.23-.69.09-.16.28-.28.57-.35.29-.07.58-.09.89-.07.3.02.55.08.75.16.13-.48.15-.92.06-1.33-.09-.41-.28-.65-.55-.72h-.02c-.22-.03-.5.12-.82.44-.32.32-.63.73-.94,1.24-.3.5-.59,1.06-.87,1.67-.28.61-.49,1.19-.64,1.74-.15.55-.24,1.04-.27,1.46-.03.42.07.68.3.8Z"/>
