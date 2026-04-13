@@ -456,10 +456,16 @@
             const savedTheme = localStorage.getItem('selectedTheme');
             const solidBg = document.getElementById('solidBg');
 
+            const DEFAULT_BG = 'assets/backgrounds/Lagon bleu - garoua.JPG';
+
             if (!savedTheme) {
-                /* Premier lancement → thème "Aucun" par défaut */
-                applySolidBackground();
-                document.querySelector('.theme-item[data-bg="none"]')?.classList.add('active');
+                /* Premier lancement → Lagon Bleu par défaut */
+                solidBg.style.opacity = '0';
+                bgImage.src = DEFAULT_BG;
+                bgImage.style.opacity = '0.6';
+                updateBgInfo(DEFAULT_BG);
+                document.querySelector(`.theme-item[data-bg="${DEFAULT_BG}"]`)?.classList.add('active');
+                localStorage.setItem('selectedTheme', DEFAULT_BG);
             } else if (savedTheme === 'none') {
                 applySolidBackground();
                 document.querySelector('.theme-item[data-bg="none"]')?.classList.add('active');
