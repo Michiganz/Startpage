@@ -653,6 +653,7 @@
                 vp.addEventListener('pointerup', e => {
                     if (!isDrag) return;
                     isDrag = false;
+                    didDrag = false;
                     const dx = e.clientX - dragSX;
                     if (Math.abs(dx) > 40) pos = dragSPos - Math.sign(-dx) * itemW;
                     reflow();
