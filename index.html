@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html class="dark" lang="en">
- 
+
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
@@ -52,19 +52,22 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Manrope:wght@200;300;400;500;600&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
- 
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+
     <script>
         const DEFAULT_LOCATION = { city: 'Douala', country: 'CM', lat: 4.0511, lon: 9.7679 };
         let userLocation = { ...DEFAULT_LOCATION };
 
         /*: durées de cache */
-        const WEATHER_CACHE_MS  = 3 * 60 * 1000;   // 3 minutes
+        const WEATHER_CACHE_MS = 2 * 60 * 1000;   // 2 minutes
         const LOCATION_CACHE_MS = 24 * 60 * 60 * 1000; // 24 h (nom de ville)
-        const GEO_CACHE_MS      = 5 * 60 * 1000;   // 5 min (coordonnées GPS)
- 
+        const GEO_CACHE_MS = 2 * 60 * 1000;   // 2 min (coordonnées GPS)
+
         /* ─── Cache coordonnées ─────────────────────────────────────────── */
         function loadCachedLocation() {
             try {
@@ -82,7 +85,7 @@
         function saveCachedLocation(lat, lon) {
             localStorage.setItem('pyramid_location', JSON.stringify({ lat, lon, timestamp: Date.now() }));
         }
- 
+
         /* ─── Géolocalisation : options haute précision + timeout court ── */
         function getUserLocation() {
             return new Promise((resolve) => {
@@ -98,7 +101,7 @@
                 );
             });
         }
- 
+
         /* ─── Géocodage inverse (Nominatim) ─────────────────────────────── */
         async function reverseGeocode(lat, lon) {
             try {
@@ -107,7 +110,7 @@
                     const { city, country, timestamp } = JSON.parse(c);
                     if (Date.now() - timestamp < LOCATION_CACHE_MS) return { city, country };
                 }
-            } catch {}
+            } catch { }
             try {
                 const res = await fetch(
                     `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=fr`,
@@ -115,7 +118,7 @@
                 );
                 const data = await res.json();
                 const a = data.address || {};
-                const city    = a.city || a.town || a.village || a.municipality || a.county || DEFAULT_LOCATION.city;
+                const city = a.city || a.town || a.village || a.municipality || a.county || DEFAULT_LOCATION.city;
                 const country = a.country || 'Cameroun';
                 localStorage.setItem('pyramid_location_name', JSON.stringify({ city, country, timestamp: Date.now() }));
                 return { city, country };
@@ -123,16 +126,16 @@
                 try {
                     const c = localStorage.getItem('pyramid_location_name');
                     if (c) { const { city, country } = JSON.parse(c); return { city, country }; }
-                } catch {}
+                } catch { }
                 return { city: DEFAULT_LOCATION.city, country: 'Cameroun' };
             }
         }
- 
+
         function updateLocationDisplay(city, country) {
             const el = document.getElementById('location-display');
             if (el) el.textContent = `${city}, ${country}`;
         }
- 
+
         /* ─── Horloge ───────────────────────────────────────────────────── */
         function updateClock() {
             const now = new Date();
@@ -140,50 +143,50 @@
             const m = String(now.getMinutes()).padStart(2, '0');
             const tlClock = document.getElementById('tl-clock');
             if (tlClock) tlClock.textContent = `${h}:${m}`;
-            const days   = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
-            const months = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+            const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+            const months = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
             const dateStr = `${days[now.getDay()]} ${now.getDate()} ${months[now.getMonth()]}`;
             const tlDate = document.getElementById('tl-date');
             if (tlDate) tlDate.textContent = dateStr;
         }
- 
+
         /* ─── Descriptions WMO complètes en français ────────────────────── */
         const WMO_DATA = {
-            0:  { desc: 'Ciel dégagé',           icon: 'fa-sun',                 color: '#FFD700' },
-            1:  { desc: 'Peu nuageux',            icon: 'fa-cloud-sun',           color: '#FFC107' },
-            2:  { desc: 'Partiellement nuageux',  icon: 'fa-cloud-sun',           color: '#F0A500' },
-            3:  { desc: 'Couvert',                icon: 'fa-cloud',               color: '#a8c4b8' },
-            45: { desc: 'Brouillard',             icon: 'fa-smog',                color: '#c8b89a' },
-            48: { desc: 'Brouillard givrant',     icon: 'fa-smog',                color: '#b8a888' },
-            51: { desc: 'Bruine légère',          icon: 'fa-cloud-rain',          color: '#90cce0' },
-            53: { desc: 'Bruine modérée',         icon: 'fa-cloud-rain',          color: '#60b0d0' },
-            55: { desc: 'Bruine dense',           icon: 'fa-cloud-rain',          color: '#3a98c0' },
-            56: { desc: 'Bruine verglaçante',     icon: 'fa-cloud-rain',          color: '#60b0d0' },
-            57: { desc: 'Bruine verglaçante forte',icon: 'fa-cloud-rain',         color: '#3a98c0' },
-            61: { desc: 'Pluie légère',           icon: 'fa-cloud-rain',          color: '#7ec8e3' },
-            63: { desc: 'Pluie modérée',          icon: 'fa-cloud-showers-heavy', color: '#4aa8c8' },
-            65: { desc: 'Pluie forte',            icon: 'fa-cloud-showers-heavy', color: '#1a88a8' },
-            66: { desc: 'Pluie verglaçante',      icon: 'fa-cloud-rain',          color: '#4aa8c8' },
-            67: { desc: 'Pluie verglaçante forte',icon: 'fa-cloud-showers-heavy', color: '#1a88a8' },
-            71: { desc: 'Neige légère',           icon: 'fa-snowflake',           color: '#cce8ff' },
-            73: { desc: 'Neige modérée',          icon: 'fa-snowflake',           color: '#b0d8ff' },
-            75: { desc: 'Neige forte',            icon: 'fa-snowflake',           color: '#90c8ff' },
-            77: { desc: 'Grains de neige',        icon: 'fa-snowflake',           color: '#80b8f0' },
-            80: { desc: 'Averses légères',        icon: 'fa-cloud-rain',          color: '#7ec8e3' },
-            81: { desc: 'Averses modérées',       icon: 'fa-cloud-showers-heavy', color: '#3a98c0' },
-            82: { desc: 'Averses violentes',      icon: 'fa-cloud-showers-heavy', color: '#0a6888' },
-            85: { desc: 'Averses de neige',       icon: 'fa-snowflake',           color: '#b0d8ff' },
-            86: { desc: 'Averses de neige forte', icon: 'fa-snowflake',           color: '#90c8ff' },
-            95: { desc: 'Orage',                  icon: 'fa-cloud-bolt',          color: '#FFD700' },
-            96: { desc: 'Orage avec grêle',       icon: 'fa-cloud-bolt',          color: '#FFC107' },
-            99: { desc: 'Orage violent',          icon: 'fa-cloud-bolt',          color: '#FF8C00' },
+            0: { desc: 'Ciel dégagé', icon: 'fa-sun', color: '#FFD700' },
+            1: { desc: 'Peu nuageux', icon: 'fa-cloud-sun', color: '#FFC107' },
+            2: { desc: 'Partiellement nuageux', icon: 'fa-cloud-sun', color: '#F0A500' },
+            3: { desc: 'Couvert', icon: 'fa-cloud', color: '#a8c4b8' },
+            45: { desc: 'Brouillard', icon: 'fa-smog', color: '#c8b89a' },
+            48: { desc: 'Brouillard givrant', icon: 'fa-smog', color: '#b8a888' },
+            51: { desc: 'Bruine légère', icon: 'fa-cloud-rain', color: '#90cce0' },
+            53: { desc: 'Bruine modérée', icon: 'fa-cloud-rain', color: '#60b0d0' },
+            55: { desc: 'Bruine dense', icon: 'fa-cloud-rain', color: '#3a98c0' },
+            56: { desc: 'Bruine verglaçante', icon: 'fa-cloud-rain', color: '#60b0d0' },
+            57: { desc: 'Bruine verglaçante forte', icon: 'fa-cloud-rain', color: '#3a98c0' },
+            61: { desc: 'Pluie légère', icon: 'fa-cloud-rain', color: '#7ec8e3' },
+            63: { desc: 'Pluie modérée', icon: 'fa-cloud-showers-heavy', color: '#4aa8c8' },
+            65: { desc: 'Pluie forte', icon: 'fa-cloud-showers-heavy', color: '#1a88a8' },
+            66: { desc: 'Pluie verglaçante', icon: 'fa-cloud-rain', color: '#4aa8c8' },
+            67: { desc: 'Pluie verglaçante forte', icon: 'fa-cloud-showers-heavy', color: '#1a88a8' },
+            71: { desc: 'Neige légère', icon: 'fa-snowflake', color: '#cce8ff' },
+            73: { desc: 'Neige modérée', icon: 'fa-snowflake', color: '#b0d8ff' },
+            75: { desc: 'Neige forte', icon: 'fa-snowflake', color: '#90c8ff' },
+            77: { desc: 'Grains de neige', icon: 'fa-snowflake', color: '#80b8f0' },
+            80: { desc: 'Averses légères', icon: 'fa-cloud-rain', color: '#7ec8e3' },
+            81: { desc: 'Averses modérées', icon: 'fa-cloud-showers-heavy', color: '#3a98c0' },
+            82: { desc: 'Averses violentes', icon: 'fa-cloud-showers-heavy', color: '#0a6888' },
+            85: { desc: 'Averses de neige', icon: 'fa-snowflake', color: '#b0d8ff' },
+            86: { desc: 'Averses de neige forte', icon: 'fa-snowflake', color: '#90c8ff' },
+            95: { desc: 'Orage', icon: 'fa-cloud-bolt', color: '#FFD700' },
+            96: { desc: 'Orage avec grêle', icon: 'fa-cloud-bolt', color: '#FFC107' },
+            99: { desc: 'Orage violent', icon: 'fa-cloud-bolt', color: '#FF8C00' },
         };
         const WMO_FALLBACK = { desc: 'Nuageux', icon: 'fa-cloud', color: '#a8c4b8' };
- 
+
         function getWMO(code) {
             return WMO_DATA[code] || WMO_FALLBACK;
         }
- 
+
         /* ─── Applique les données météo au widget ──────────────────────── */
         function applyWeather(temp, feel, hum, wind, code) {
             const wmo = getWMO(code);
@@ -193,7 +196,7 @@
             const descEl = document.getElementById('weather-desc');
             if (descEl) descEl.textContent = wmo.desc;
         }
- 
+
         /* ─── Cache météo: 3 min ────────────────────────────── */
         function loadCachedWeather() {
             try {
@@ -207,7 +210,7 @@
                 return false;
             } catch { return false; }
         }
- 
+
         /* ─── Fetch météo Open-Meteo : relance la géoloc avant chaque appel ── */
         async function fetchWeather() {
             /* Affiche immédiatement le cache pendant que la fraîche arrive */
@@ -230,7 +233,7 @@
                 const c = data.current;
                 const temp = c.temperature_2m;
                 const feel = c.apparent_temperature;
-                const hum  = c.relative_humidity_2m;
+                const hum = c.relative_humidity_2m;
                 const wind = c.wind_speed_10m;
                 const code = c.weather_code;
                 applyWeather(temp, feel, hum, wind, code);
@@ -253,34 +256,220 @@
                 }
             }
         }
- 
+
         document.addEventListener('DOMContentLoaded', function () {
- 
+
             /* ── Thèmes ─────────────────────────────────────────────────── */
-            const bgImage    = document.getElementById('bgImage');
-            const customBtn  = document.getElementById('customBtn');
+            const bgImage = document.getElementById('bgImage');
+            const customBtn = document.getElementById('customBtn');
             const themePanel = document.getElementById('themePanel');
             const closePanel = document.getElementById('closePanel');
             const items = document.querySelectorAll('.theme-item');
             let isOpen = false;
- 
+
+            /* ── Informations sur chaque background ──────────────────────── */
+            const BG_INFO = {
+                "assets/backgrounds/adamaoua-ruche.JPG": {
+                    title: 'Adamaoua',
+                    desc: 'Ruche d\'activité dans le plateau de l\'Adamaoua, au cœur du Cameroun.'
+                },
+                'assets/backgrounds/Bimbia - cailloux et plage.JPG': {
+                    title: 'Bimbia',
+                    desc: 'Plage de Bimbia, lieu de mémoire historique près de Limbé-Cameroun.'
+                },
+                'assets/backgrounds/campements-pygmes.JPG': {
+                    title: 'Campements Pygmés',
+                    desc: 'Campements traditionnels des peuples Pygmés dans la forêt de l\'Est Cameroun.'
+                },
+                'assets/backgrounds/chutes de la Lobé.JPG': {
+                    title: 'Chutes de la Lobé',
+                    desc: 'Les majestueuses chutes de la Lobé, Kribi Cameroun.'
+                },
+                'assets/backgrounds/danseurs-ouest.JPG': {
+                    title: 'Danseurs de l\'Ouest',
+                    desc: 'Les danseurs traditionnels de la région de l\'Ouest Cameroun.'
+                },
+                'assets/backgrounds/église dans le nord-ouest bamenda.JPG': {
+                    title: 'Bamenda',
+                    desc: 'Une église EPC dans les hauts plateaux de Bamenda, Nord-Ouest.'
+                },
+                'assets/backgrounds/Festival de la Culture Massa.jpg': {
+                    title: 'Festival Massa',
+                    desc: 'Célébration vibrante de la culture et des traditions du peuple Massa, Garoua Nord-Cameroun .'
+                },
+                'assets/backgrounds/Festival des arts et de la Culture Massa.JPG': {
+                    title: 'Peuple Massa',
+                    desc: 'Le festival des arts et de la culture, un patrimoine vivant du peuple Massa, Garoua Nord-Cameroun.'
+                },
+                'assets/backgrounds/Gorges de kola - nord du cameroun.JPG': {
+                    title: 'Gorges de Kola',
+                    desc: 'Les impressionnantes gorges de Kola dans le nord du Cameroun.'
+                },
+                'assets/backgrounds/Lagon bleu - garoua.JPG': {
+                    title: 'Lagon Bleu',
+                    desc: 'Le lagon bleu de Garoua, un joyau naturel aux eaux turquoise.'
+                },
+                'assets/backgrounds/Lion - garoua.JPG': {
+                    title: 'Lion de Garoua',
+                    desc: 'Le roi de la savane dans le Parc Zoologique de Garoua, Nord-Cameroun.'
+                },
+                'assets/backgrounds/Mont cameroun , vu de Douala-Deido plage.jpg': {
+                    title: 'Mont Cameroun',
+                    desc: 'Le Mont Cameroun, toit de l\'Afrique centrale, vu depuis Deido plage; Douala-Cameroun.'
+                },
+                'assets/backgrounds/New bell city paint.JPG': {
+                    title: 'New Bell City',
+                    desc: 'Peinture  futuriste du quartier New Bell à Douala.'
+                },
+                'assets/backgrounds/ngouon- chapeau.jpg': {
+                    title: 'Ngouon',
+                    desc: 'Jeune Festivalier au Ngouon, fete traditionnelle Bamoun à Foumban Ouest-Cameroun.'
+                },
+                'assets/backgrounds/Parade de piroguiers sur le fleuve Wouri pendant le Ngondo (Fete Traditionnelle).JPG': {
+                    title: 'Ngondo',
+                    desc: 'La parade des piroguiers sur le fleuve Wouri pendant la fête traditionnelle du Ngondo; Douala-Cameroun.'
+                },
+                'assets/backgrounds/Plage de Kribi.JPG': {
+                    title: 'Kribi',
+                    desc: 'La magnifique plage de Kribi, perle côtière du Cameroun.'
+                },
+                'assets/backgrounds/pont-edea.JPG': {
+                    title: 'Pont d\'Edéa',
+                    desc: 'Le pont d\'Edéa, reliant les rives de la Sanaga.'
+                },
+                'assets/backgrounds/Port de Douala-cimencam.JPG': {
+                    title: 'Port de Douala',
+                    desc: 'Le Port Autonome de Douala, poumon économique du Cameroun.'
+                },
+                'assets/backgrounds/Singe sur arbre coupé.jpg': {
+                    title: 'Faune camerounaise',
+                    desc: 'Un singe perché sur un arbre coupé, témoin de la biodiversité locale; Parc Zoologique de Garoua.'
+                },
+                'assets/backgrounds/ville-yaounde.png': {
+                    title: 'Yaoundé',
+                    desc: 'La ville de Yaoundé, capitale politique du Cameroun.'
+                }
+            };
+
+            function updateBgInfo(bgPath) {
+                const infoEl = document.getElementById('bg-info');
+                const titleEl = document.getElementById('bg-info-title');
+                const descEl = document.getElementById('bg-info-desc');
+                const copyrightEl = document.getElementById('bg-copyright');
+
+                if (!infoEl || !titleEl || !descEl) return;
+
+                const info = BG_INFO[bgPath];
+                if (info) {
+                    titleEl.textContent = info.title;
+                    descEl.textContent = info.desc;
+                    infoEl.style.opacity = '1';
+                    infoEl.style.transform = 'translateY(0)';
+                } else {
+                    infoEl.style.opacity = '0';
+                    infoEl.style.transform = 'translateY(10px)';
+                }
+            }
+
             function applySolidBackground() {
                 const sb = document.getElementById('solidBg');
                 bgImage.style.opacity = '0';
                 sb.style.background = 'linear-gradient(135deg, #0a0f0d 0%, #121c17 100%)';
                 sb.querySelector('div').style.background = 'rgba(7,169,104,0.20)';
                 sb.style.opacity = '1';
+                updateBgInfo(null);
             }
             customBtn.addEventListener('click', e => { e.stopPropagation(); isOpen = !isOpen; themePanel.style.transform = isOpen ? 'translateY(0)' : 'translateY(100%)'; });
             closePanel.addEventListener('click', () => { isOpen = false; themePanel.style.transform = 'translateY(100%)'; });
             document.addEventListener('click', e => { if (isOpen && !themePanel.contains(e.target) && !customBtn.contains(e.target)) { isOpen = false; themePanel.style.transform = 'translateY(100%)'; } });
- 
+
+            /* ── Aperçu background plein écran ───────────────────────── */
+            let isPreview = false;
+            const previewBtn = document.getElementById('bgPreviewBtn');
+            const icon = previewBtn.querySelector('i');
+            const hiddenIds = [
+                'topleft-weather', 'topleft-clock-wrap', 'bg-info',
+                'themePanel', 'main-page',
+                'shortcutModal'
+            ];
+
+            previewBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                isPreview = !isPreview;
+
+                if (isPreview) {
+                    icon.className = 'fas fa-compress text-primary text-xs';
+                    previewBtn.style.transform = 'scale(1.15)';
+
+                    hiddenIds.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) { el._origOpacity = el.style.opacity || ''; el.style.transition = 'opacity .35s ease'; el.style.opacity = '0'; el.style.pointerEvents = 'none'; }
+                    });
+
+                    document.querySelectorAll('section, .partner-item, .user-shortcut, .shortcut-menu-btn, .sc-item').forEach(el => {
+                        el._origOpacity = el.style.opacity || ''; el.style.transition = 'opacity .35s ease'; el.style.opacity = '0'; el.style.pointerEvents = 'none';
+                    });
+
+                    const bar = document.querySelector('.fixed.top-0');
+                    if (bar) { bar._origOpacity = bar.style.opacity || ''; bar.style.transition = 'opacity .35s ease'; bar.style.opacity = '0'; bar.style.pointerEvents = 'none'; }
+
+                    const customB = document.getElementById('customBtn');
+                    if (customB) { customB._origOpacity = customB.style.opacity || ''; customB.style.transition = 'opacity .35s ease'; customB.style.opacity = '0'; customB.style.pointerEvents = 'none'; }
+
+                    const bgImg = document.getElementById('bgImage');
+                    bgImg.style.transition = 'opacity .5s ease';
+                    bgImg.style.opacity = '1';
+                    document.getElementById('solidBg').style.opacity = '0';
+                } else {
+                    icon.className = 'fas fa-expand text-primary text-xs';
+                    previewBtn.style.transform = 'scale(1)';
+
+                    hiddenIds.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) { el.style.opacity = el._origOpacity || ''; el.style.pointerEvents = ''; }
+                    });
+
+                    document.querySelectorAll('section, .partner-item, .user-shortcut, .shortcut-menu-btn, .sc-item').forEach(el => {
+                        el.style.opacity = el._origOpacity || ''; el.style.pointerEvents = '';
+                    });
+
+                    const bar = document.querySelector('.fixed.top-0');
+                    if (bar) { bar.style.opacity = bar._origOpacity || ''; bar.style.pointerEvents = ''; }
+
+                    const customB = document.getElementById('customBtn');
+                    if (customB) { customB.style.opacity = customB._origOpacity || ''; customB.style.pointerEvents = ''; }
+
+                    const saved = localStorage.getItem('selectedTheme');
+                    if (!saved || saved === 'none') {
+                        document.getElementById('solidBg').style.opacity = '1';
+                        document.getElementById('bgImage').style.opacity = '0';
+                    } else {
+                        document.getElementById('bgImage').style.opacity = '0.6';
+                    }
+                }
+            });
+
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape' && isPreview) previewBtn.click();
+            });
+
             const savedTheme = localStorage.getItem('selectedTheme');
-            const solidBg    = document.getElementById('solidBg');
-            if (!savedTheme) { applySolidBackground(); document.querySelector('.theme-item[data-bg="none"]')?.classList.add('active'); }
-            else if (savedTheme === 'none') { applySolidBackground(); }
-            else { solidBg.style.opacity = '0'; bgImage.src = savedTheme; bgImage.style.opacity = '0.6'; }
- 
+            const solidBg = document.getElementById('solidBg');
+
+            if (!savedTheme) {
+                /* Premier lancement → thème "Aucun" par défaut */
+                applySolidBackground();
+                document.querySelector('.theme-item[data-bg="none"]')?.classList.add('active');
+            } else if (savedTheme === 'none') {
+                applySolidBackground();
+                document.querySelector('.theme-item[data-bg="none"]')?.classList.add('active');
+            } else {
+                solidBg.style.opacity = '0';
+                bgImage.src = savedTheme;
+                bgImage.style.opacity = '0.6';
+                updateBgInfo(savedTheme);
+            }
+
             items.forEach(item => {
                 const bg = item.getAttribute('data-bg');
                 if (bg === savedTheme) item.classList.add('active');
@@ -293,20 +482,21 @@
                         bgImage.style.opacity = '0'; bgImage.style.transform = 'scale(1.05)';
                         setTimeout(() => { bgImage.src = bg; bgImage.style.opacity = '0.6'; bgImage.style.transform = 'scale(1)'; }, 200);
                         localStorage.setItem('selectedTheme', bg);
+                        updateBgInfo(bg);
                     }
                 });
             });
- 
+
             document.body.classList.add('loaded');
             updateClock();
- 
+
             /* ── Init localisation + météo: appel direct, pas de cache coords obligatoire ── */
             (async function initLocationAndWeather() {
                 /* Affiche le nom de ville mis en cache immédiatement */
                 try {
                     const c = localStorage.getItem('pyramid_location_name');
                     if (c) { const { city, country } = JSON.parse(c); updateLocationDisplay(city, country); }
-                } catch {}
+                } catch { }
 
                 /*  charge coords en cache si dispo, sinon valeurs par défaut,
                    puis lance fetchWeather() qui redemandera la géoloc en interne */
@@ -315,7 +505,7 @@
                 /* Premier appel immédiat — fetchWeather() ira chercher la géoloc lui-même */
                 fetchWeather();
             })();
- 
+
             setInterval(updateClock, 1000);
 
             /*  rafraîchissement toutes les 3 minutes (180 000 ms) */
@@ -324,7 +514,7 @@
             /* ── Alternance top-left : météo ↔ horloge (10 s) ──────────── */
             (function () {
                 const weatherWrap = document.getElementById('topleft-weather');
-                const clockWrap   = document.getElementById('topleft-clock-wrap');
+                const clockWrap = document.getElementById('topleft-clock-wrap');
                 let showing = 'weather';
 
                 function fadeTo(hideEl, showEl) {
@@ -347,27 +537,27 @@
                     }
                 }, 10000);
             })();
- 
+
             /* ── Carousel infini avec flèches ───────────────────────────── */
             (function () {
                 const track = document.getElementById('carousel-track');
-                const vp    = document.getElementById('carousel-viewport');
+                const vp = document.getElementById('carousel-viewport');
                 if (!track || !vp) return;
- 
+
                 const GAP = 18;
- 
-                const originals  = Array.from(track.querySelectorAll('.carousel-item'));
+
+                const originals = Array.from(track.querySelectorAll('.carousel-item'));
                 const ORIG_COUNT = originals.length;
                 if (ORIG_COUNT === 0) return;
- 
+
                 function buildClones() {
                     track.querySelectorAll('[aria-hidden="true"]').forEach(el => el.remove());
- 
-                    const itemW   = originals[0].offsetWidth + GAP;
-                    const setW    = ORIG_COUNT * itemW;
-                    const vpW     = vp.offsetWidth || window.innerWidth;
-                    const copies  = Math.ceil((vpW * 2) / setW) + 1;
- 
+
+                    const itemW = originals[0].offsetWidth + GAP;
+                    const setW = ORIG_COUNT * itemW;
+                    const vpW = vp.offsetWidth || window.innerWidth;
+                    const copies = Math.ceil((vpW * 2) / setW) + 1;
+
                     for (let c = 0; c < copies; c++) {
                         originals.forEach(el => {
                             const clone = el.cloneNode(true);
@@ -384,19 +574,19 @@
                     }
                     return { itemW, setW, copies };
                 }
- 
+
                 let itemW = 0, setW = 0, copies = 0;
-                let pos     = 0;
-                let speed   = 0.55;
-                let isAuto  = true;
-                let isDrag  = false;
-                let dragSX  = 0, dragSPos = 0;
+                let pos = 0;
+                let speed = 0.55;
+                let isAuto = true;
+                let isDrag = false;
+                let dragSX = 0, dragSPos = 0;
                 let didDrag = false;
- 
+
                 function setPos(instant) {
                     if (instant) {
                         track.style.transition = 'none';
-                        track.style.transform  = `translateX(${pos}px)`;
+                        track.style.transform = `translateX(${pos}px)`;
                         requestAnimationFrame(() => requestAnimationFrame(() => {
                             track.style.transition = '';
                         }));
@@ -404,19 +594,19 @@
                         track.style.transform = `translateX(${pos}px)`;
                     }
                 }
- 
+
                 function reflow() {
                     if (pos <= -(setW * (copies + 1))) { pos += setW * copies; setPos(true); }
                     if (pos >= -(setW * (copies - 1))) { pos -= setW * copies; setPos(true); }
                 }
- 
+
                 function init() {
                     const r = buildClones();
                     itemW = r.itemW; setW = r.setW; copies = r.copies;
                     pos = -(setW * copies);
                     setPos(true);
                 }
- 
+
                 function loop() {
                     if (isAuto && !isDrag) {
                         pos -= speed;
@@ -425,21 +615,21 @@
                     }
                     requestAnimationFrame(loop);
                 }
- 
+
                 function stepBy(n) {
                     isAuto = false;
                     clearTimeout(window._carouselResumeTimer);
                     pos -= n * itemW;
                     reflow();
                     track.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
-                    track.style.transform  = `translateX(${pos}px)`;
+                    track.style.transform = `translateX(${pos}px)`;
                     setTimeout(() => { track.style.transition = ''; }, 400);
                     window._carouselResumeTimer = setTimeout(() => { isAuto = true; }, 2500);
                 }
- 
+
                 document.getElementById('carousel-prev').addEventListener('click', () => stepBy(-1));
                 document.getElementById('carousel-next').addEventListener('click', () => stepBy(1));
- 
+
                 vp.addEventListener('pointerdown', e => {
                     isDrag = true; didDrag = false; isAuto = false;
                     dragSX = e.clientX; dragSPos = pos;
@@ -461,56 +651,56 @@
                     if (Math.abs(dx) > 40) pos = dragSPos - Math.sign(-dx) * itemW;
                     reflow();
                     track.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
-                    track.style.transform  = `translateX(${pos}px)`;
+                    track.style.transform = `translateX(${pos}px)`;
                     setTimeout(() => { track.style.transition = ''; isAuto = true; }, 400);
                 });
                 vp.addEventListener('pointercancel', () => {
                     isDrag = false; isAuto = true;
                     reflow();
                 });
- 
+
                 vp.addEventListener('click', e => {
                     if (didDrag) { e.preventDefault(); e.stopPropagation(); didDrag = false; }
                 }, true);
- 
+
                 vp.addEventListener('mouseenter', () => { isAuto = false; });
                 vp.addEventListener('mouseleave', () => { isAuto = true; });
- 
+
                 window.addEventListener('resize', () => {
                     clearTimeout(window._carouselResizeTimer);
                     window._carouselResizeTimer = setTimeout(init, 150);
                 });
- 
+
                 init();
                 loop();
             })();
- 
+
             /* ── Recherche ──────────────────────────────────────────────── */
             const searchInput = document.getElementById('searchInput');
-            const searchBtn   = document.getElementById('searchBtn');
+            const searchBtn = document.getElementById('searchBtn');
             function doSearch() {
                 const q = searchInput.value.trim(); if (!q) return;
                 const isURL = /^(https?:\/\/|www\.)\S+/.test(q);
-                window.open(isURL ? (q.startsWith('http') ? q : 'https://'+q) : `https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank');
+                window.open(isURL ? (q.startsWith('http') ? q : 'https://' + q) : `https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank');
                 searchInput.value = '';
             }
             searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
             searchBtn.addEventListener('click', doSearch);
- 
+
             /* ── Raccourcis utilisateur ─────────────────────────────────── */
-            const addBtn          = document.getElementById('addShortcutBtn');
-            const shortcutModal   = document.getElementById('shortcutModal');
-            const shortcutClose   = document.getElementById('shortcutClose');
+            const addBtn = document.getElementById('addShortcutBtn');
+            const shortcutModal = document.getElementById('shortcutModal');
+            const shortcutClose = document.getElementById('shortcutClose');
             const shortcutConfirm = document.getElementById('shortcutConfirm');
-            const shortcutName    = document.getElementById('shortcutName');
-            const shortcutUrl     = document.getElementById('shortcutUrl');
-            const siteGrid        = document.getElementById('siteGrid');
+            const shortcutName = document.getElementById('shortcutName');
+            const shortcutUrl = document.getElementById('shortcutUrl');
+            const siteGrid = document.getElementById('siteGrid');
             const MAX_SC = 7;
- 
+
             function loadSC() { try { return JSON.parse(localStorage.getItem('pyramid_shortcuts') || '[]'); } catch { return []; } }
             function saveSC(a) { localStorage.setItem('pyramid_shortcuts', JSON.stringify(a)); }
             function refreshAddBtn() { addBtn.style.display = loadSC().length >= MAX_SC ? 'none' : 'flex'; }
- 
+
             function renderShortcuts() {
                 document.querySelectorAll('.user-shortcut').forEach(el => el.remove());
                 loadSC().forEach((sc, i) => {
@@ -534,7 +724,7 @@
                     btn.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showSCMenu(parseInt(btn.dataset.index), btn); });
                 });
             }
- 
+
             let ctxMenuIdx = null;
             function showSCMenu(index, trigger) {
                 closeSCMenu();
@@ -552,7 +742,7 @@
                     </button>`;
                 const r = trigger.getBoundingClientRect(), mw = 140;
                 let left = r.right - mw; if (left < 10) left = 10;
-                menu.style.cssText = `left:${left}px;top:${r.bottom+8}px;`;
+                menu.style.cssText = `left:${left}px;top:${r.bottom + 8}px;`;
                 document.body.appendChild(menu);
                 document.getElementById('scEdit').addEventListener('click', () => { editSC(index); closeSCMenu(); });
                 document.getElementById('scDel').addEventListener('click', () => { const a = loadSC(); a.splice(index, 1); saveSC(a); renderShortcuts(); closeSCMenu(); });
@@ -560,7 +750,7 @@
             }
             function closeSCMenuHandler(e) { const m = document.getElementById('scMenu'); if (m && !m.contains(e.target)) closeSCMenu(); }
             function closeSCMenu() { document.getElementById('scMenu')?.remove(); document.removeEventListener('click', closeSCMenuHandler); ctxMenuIdx = null; }
- 
+
             function editSC(index) {
                 const a = loadSC(), sc = a[index]; if (!sc) return;
                 shortcutName.value = sc.name; shortcutUrl.value = sc.url.replace(/^https?:\/\//, '');
@@ -575,7 +765,7 @@
                 };
                 shortcutModal.classList.remove('hidden'); shortcutModal.classList.add('flex'); shortcutName.focus();
             }
- 
+
             addBtn.addEventListener('click', () => {
                 if (loadSC().length >= MAX_SC) { alert('Maximum de 7 raccourcis atteint.'); return; }
                 shortcutModal.classList.remove('hidden'); shortcutModal.classList.add('flex'); shortcutName.focus();
@@ -599,17 +789,40 @@
     </script>
     <style>
         /* ── Entrée page ── */
-        body { opacity: 0; transform: scale(1.02); transition: opacity .8s ease, transform .8s ease; }
-        body.loaded { opacity: 1; transform: scale(1); }
- 
+        body {
+            opacity: 0;
+            transform: scale(1.02);
+            transition: opacity .8s ease, transform .8s ease;
+        }
+
+        body.loaded {
+            opacity: 1;
+            transform: scale(1);
+        }
+
         /* ═══ ÉCRAN UNIQUE — aucun scroll ═══ */
-        html, body { height: 100%; overflow: hidden; }
-        #main-page { height: 100dvh; overflow: hidden; }
- 
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #main-page {
+            height: 100dvh;
+            overflow: hidden;
+        }
+
         /* ── Écrans très courts ── */
         @media (max-height: 520px) {
-            .partner-item { width: 32px !important; height: 32px !important; }
-            .sc-item { width: 44px !important; height: 44px !important; }
+            .partner-item {
+                width: 32px !important;
+                height: 32px !important;
+            }
+
+            .sc-item {
+                width: 44px !important;
+                height: 44px !important;
+            }
         }
 
         /* ── Widget météo compact ── */
@@ -617,16 +830,77 @@
             flex-shrink: 0;
             max-width: fit-content;
         }
+
         .glass-widget {
-            background: rgba(13,20,17,.4);
+            background: rgba(13, 20, 17, .4);
             backdrop-filter: blur(12px);
-            border: 1px solid rgba(45,74,61,.2);
+            border: 1px solid rgba(45, 74, 61, .2);
         }
+
+        /* ── Info background en bas à gauche ── */
+        #bg-info {
+            position: fixed;
+            bottom: 16px;
+            left: 14px;
+            z-index: 30;
+            padding: 6px 10px;
+            background: rgba(13, 20, 17, .45);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(45, 74, 61, .18);
+            border-radius: 10px;
+            max-width: 240px;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: opacity .4s ease, transform .4s ease;
+            pointer-events: none;
+        }
+
+        #bg-info-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: .04em;
+            color: #fff;
+            margin: 0 0 2px 0;
+        }
+
+        #bg-info-desc {
+            font-family: 'Manrope', sans-serif;
+            font-size: 7.5px;
+            line-height: 1.35;
+            color: #a8c4b8;
+            margin: 0 0 4px 0;
+        }
+
+        #bg-copyright {
+            font-family: 'Manrope', sans-serif;
+            font-size: 8.5px;
+            font-weight: 700;
+            letter-spacing: .06em;
+            color: rgba(168, 196, 184, .55);
+            margin: 0;
+            padding-top: 3px;
+            border-top: 1px solid rgba(45, 74, 61, .15);
+        }
+
         @media (max-width: 640px) {
-            .glass-widget { padding: 6px 10px !important; gap: 6px !important; }
-            #temperature  { font-size: 13px !important; }
-            #weather-icon, #weather-icon i { font-size: 15px !important; }
-            #weather-desc { font-size: 8px !important; }
+            .glass-widget {
+                padding: 6px 10px !important;
+                gap: 6px !important;
+            }
+
+            #temperature {
+                font-size: 13px !important;
+            }
+
+            #weather-icon,
+            #weather-icon i {
+                font-size: 15px !important;
+            }
+
+            #weather-desc {
+                font-size: 8px !important;
+            }
         }
 
         /* ── Alternance top-left ── */
@@ -634,12 +908,14 @@
         #topleft-clock-wrap {
             transition: opacity .35s ease;
         }
+
         #topleft-clock-wrap {
             display: none;
             opacity: 0;
             flex-direction: column;
             justify-content: center;
         }
+
         #tl-clock {
             font-family: 'Space Grotesk', sans-serif;
             font-size: clamp(1.6rem, 4vw, 2.4rem);
@@ -648,6 +924,7 @@
             letter-spacing: -.03em;
             color: #fff;
         }
+
         #tl-date {
             font-family: 'Space Grotesk', sans-serif;
             font-size: clamp(0.45rem, 1vw, 0.6rem);
@@ -657,41 +934,137 @@
             margin-top: 4px;
         }
 
-        #weather-icon i, #closePanel i { display: inline-flex; align-items: center; justify-content: center; }
-        #location-display { transition: opacity .4s ease; }
- 
-        .card-hover { transition: box-shadow .3s ease; }
-        .card-hover:hover { box-shadow: 0 20px 40px rgba(0,0,0,.4); }
- 
-        .shortcut-menu-btn { opacity: 0; pointer-events: none; }
-        .user-shortcut:hover .shortcut-menu-btn { opacity: 1; pointer-events: auto; }
-        .shortcut-menu-btn:hover { background: rgba(7,169,104,.15) !important; border-color: rgba(7,169,104,.4) !important; }
-        .shortcut-menu-btn:hover svg { color: #07a968 !important; }
-        #scMenu { animation: menuFadeIn .15s ease-out; }
-        @keyframes menuFadeIn { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:translateY(0)} }
- 
-        .search-focus:focus-within { box-shadow: 0 0 25px rgba(7,169,104,.3); border-color: rgba(7,169,104,.5); }
- 
-        a, button, span, img, div[class*="border"], div[class*="bg-"], .glass-widget, .glass-button {
+        #weather-icon i,
+        #closePanel i {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #location-display {
+            transition: opacity .4s ease;
+        }
+
+        .card-hover {
+            transition: box-shadow .3s ease;
+        }
+
+        .card-hover:hover {
+            box-shadow: 0 20px 40px rgba(0, 0, 0, .4);
+        }
+
+        .shortcut-menu-btn {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .user-shortcut:hover .shortcut-menu-btn {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .shortcut-menu-btn:hover {
+            background: rgba(7, 169, 104, .15) !important;
+            border-color: rgba(7, 169, 104, .4) !important;
+        }
+
+        .shortcut-menu-btn:hover svg {
+            color: #07a968 !important;
+        }
+
+        #scMenu {
+            animation: menuFadeIn .15s ease-out;
+        }
+
+        @keyframes menuFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-4px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .search-focus:focus-within {
+            box-shadow: 0 0 25px rgba(7, 169, 104, .3);
+            border-color: rgba(7, 169, 104, .5);
+        }
+
+        a,
+        button,
+        span,
+        img,
+        div[class*="border"],
+        div[class*="bg-"],
+        .glass-widget,
+        .glass-button {
             transition: color .2s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease, opacity .2s ease;
         }
-        .fixed.inset-0 img { transition: opacity .5s ease; }
-        .bg-image { transition: opacity .6s ease, transform .6s ease; }
- 
-        ::-webkit-scrollbar { width: 10px; height: 10px; }
-        ::-webkit-scrollbar-track { background: #000; }
-        ::-webkit-scrollbar-thumb { background: #07a968; border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: #0fcf80; }
-        #themePanel::-webkit-scrollbar { height: 8px; }
-        #themePanel::-webkit-scrollbar-track { background: #000; }
-        #themePanel::-webkit-scrollbar-thumb { background: #07a968; border-radius: 10px; }
- 
-        .theme-item.active .active-indicator { opacity:1; box-shadow: 0 0 20px rgba(7,169,104,.6); }
-        .theme-item { transition: transform .3s ease, box-shadow .3s ease; }
-        .theme-item:hover { transform: scale(1.05); }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
- 
+
+        .fixed.inset-0 img {
+            transition: opacity .5s ease;
+        }
+
+        .bg-image {
+            transition: opacity .6s ease, transform .6s ease;
+        }
+
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #07a968;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #0fcf80;
+        }
+
+        #themePanel::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        #themePanel::-webkit-scrollbar-track {
+            background: #000;
+        }
+
+        #themePanel::-webkit-scrollbar-thumb {
+            background: #07a968;
+            border-radius: 10px;
+        }
+
+        .theme-item.active .active-indicator {
+            opacity: 1;
+            box-shadow: 0 0 20px rgba(7, 169, 104, .6);
+        }
+
+        .theme-item {
+            transition: transform .3s ease, box-shadow .3s ease;
+        }
+
+        .theme-item:hover {
+            transform: scale(1.05);
+        }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+
         /* ══ CAROUSEL ══ */
         #ministries-section {
             display: flex;
@@ -705,6 +1078,7 @@
             margin: 0 auto;
             width: 100%;
         }
+
         .carousel-viewport {
             flex: 1;
             min-width: 0;
@@ -716,7 +1090,11 @@
             mask-image: linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%);
             -webkit-mask-image: linear-gradient(to right, transparent 0%, black 12%, black 88%, transparent 100%);
         }
-        .carousel-viewport.is-dragging { cursor: grabbing; }
+
+        .carousel-viewport.is-dragging {
+            cursor: grabbing;
+        }
+
         .carousel-track {
             display: flex;
             gap: 18px;
@@ -733,8 +1111,8 @@
             width: 32px;
             height: 32px;
             border-radius: 50%;
-            background: rgba(15,23,19,.75);
-            border: 1px solid rgba(45,74,61,.35);
+            background: rgba(15, 23, 19, .75);
+            border: 1px solid rgba(45, 74, 61, .35);
             color: #a8c4b8;
             backdrop-filter: blur(8px);
             z-index: 10;
@@ -743,7 +1121,12 @@
             pointer-events: none;
             transition: opacity .25s ease, color .2s ease, border-color .2s ease, background-color .2s ease;
         }
-        .carousel-arrow svg { width: 14px; height: 14px; pointer-events: none; }
+
+        .carousel-arrow svg {
+            width: 14px;
+            height: 14px;
+            pointer-events: none;
+        }
 
         #ministries-section:hover .carousel-arrow {
             opacity: 1;
@@ -752,15 +1135,16 @@
 
         .carousel-arrow:hover {
             color: #07a968;
-            border-color: rgba(7,169,104,.55);
-            background: rgba(7,169,104,.12);
+            border-color: rgba(7, 169, 104, .55);
+            background: rgba(7, 169, 104, .12);
         }
 
         .glass-button {
-            background: rgba(15,23,19,.5);
+            background: rgba(15, 23, 19, .5);
             backdrop-filter: blur(16px);
-            border: 1px solid rgba(45,74,61,.25);
+            border: 1px solid rgba(45, 74, 61, .25);
         }
+
         :root {
             --bg: #0a0f0d;
             --surface-low: #0f1713;
@@ -769,9 +1153,22 @@
             --on-surface: #e8f5f0;
             --on-surface-variant: #a8c4b8;
         }
-        body { background-color: var(--bg); color: var(--on-surface); margin: 0; }
-        a { text-decoration: none; color: inherit; }
-        #shortcutModal input:focus { border-color: rgba(7,169,104,.5); box-shadow: 0 0 12px rgba(7,169,104,.2); }
+
+        body {
+            background-color: var(--bg);
+            color: var(--on-surface);
+            margin: 0;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        #shortcutModal input:focus {
+            border-color: rgba(7, 169, 104, .5);
+            box-shadow: 0 0 12px rgba(7, 169, 104, .2);
+        }
 
         /* ── Logo Pyramid Browser centré ── */
         #pyramid-logo-center {
@@ -779,13 +1176,13 @@
             height: auto;
             display: block;
             margin: 0 auto;
-            filter: drop-shadow(0 0 18px rgba(255,255,255,0.08));
+            filter: drop-shadow(0 0 18px rgba(255, 255, 255, 0.08));
         }
     </style>
 </head>
 
 <body class="bg-background text-on-surface font-body">
- 
+
     <!-- BARRE SUPÉRIEURE FIXE -->
     <div class="fixed top-0 left-0 right-0 px-5 py-3.5 flex justify-between items-start z-50 pointer-events-none">
 
@@ -794,18 +1191,18 @@
             <div id="topleft-weather" class="weather-widget-wrap" style="opacity:1; display:block;">
                 <div class="glass-widget px-4 py-2 rounded-2xl flex items-center gap-3">
                     <span id="weather-icon"
-                          class="w-9 h-9 rounded-full flex items-center justify-center border-2 border-primary bg-surface/50 flex-shrink-0"
-                          style="font-size:18px;">
+                        class="w-9 h-9 rounded-full flex items-center justify-center border-2 border-primary bg-surface/50 flex-shrink-0"
+                        style="font-size:18px;">
                         <i class="fas fa-sun" style="color:#ffffff;"></i>
                     </span>
                     <div>
                         <p id="temperature" class="text-lg font-headline font-medium leading-none">--°C</p>
                         <p id="weather-desc"
-                           class="text-[9px] uppercase tracking-wider text-primary/80 mt-0.5 leading-none">
+                            class="text-[9px] uppercase tracking-wider text-primary/80 mt-0.5 leading-none">
                             Chargement…
                         </p>
                         <p id="location-display"
-                           class="text-[9px] uppercase tracking-widest text-on-surface-variant mt-0.5">
+                            class="text-[9px] uppercase tracking-widest text-on-surface-variant mt-0.5">
                             Douala, Cameroun
                         </p>
                     </div>
@@ -820,226 +1217,512 @@
             </div>
 
         </div>
- 
+
         <div class="flex items-center gap-3 pointer-events-auto">
-            <div class="flex items-center gap-3 px-3 py-2 rounded-lg border border-outline-variant/10 bg-surface-container-low/30">
+            <div
+                class="flex items-center gap-3 px-3 py-2 rounded-lg border border-outline-variant/10 bg-surface-container-low/30">
                 <button class="flex items-center gap-1.5 group">
                     <img src="assets/logo/icon-pyramid-play-white.svg" class="w-5 h-5 object-contain" alt="Play">
-                    <span class="text-[10px] font-headline tracking-widest uppercase text-on-surface-variant group-hover:text-primary">Play</span>
+                    <span
+                        class="text-[10px] font-headline tracking-widest uppercase text-on-surface-variant group-hover:text-primary">Play</span>
                 </button>
                 <div class="w-px h-3 bg-outline-variant/30"></div>
                 <button class="flex items-center gap-1.5 group">
                     <img src="assets/logo/Icon-PyramidMail.svg" class="w-5 h-5 object-contain" alt="Mail">
-                    <span class="text-[10px] font-headline tracking-widest uppercase text-on-surface-variant group-hover:text-primary">Mail</span>
+                    <span
+                        class="text-[10px] font-headline tracking-widest uppercase text-on-surface-variant group-hover:text-primary">Mail</span>
                 </button>
             </div>
         </div>
     </div>
- 
+
     <!-- PAGE PRINCIPALE -->
-    <main id="main-page"
-          class="w-full flex flex-col items-center overflow-hidden"
-          style="padding-top: 80px; padding-bottom: 60px;">
- 
+    <main id="main-page" class="w-full flex flex-col items-center overflow-hidden"
+        style="padding-top: 80px; padding-bottom: 60px;">
+
         <div class="flex-1 w-full flex flex-col items-center justify-evenly overflow-hidden">
- 
+
             <!-- ① Logo -->
             <section class="text-center select-none flex items-center justify-center">
-                <svg id="pyramid-logo-center"
-                     xmlns="http://www.w3.org/2000/svg"
-                     viewBox="0 0 164.31 80.9"
-                     aria-label="Pyramid Browser">
-                  <g fill="white">
-                    <path d="m0,32.59h11.5c2.5,0,4.38.62,5.63,1.85,1.25,1.24,1.87,2.99,1.87,5.27s-.68,4.17-2.04,5.49c-1.36,1.32-3.43,1.98-6.22,1.98h-3.79v8.61H0v-23.21Zm6.95,9.89h1.69c1.33,0,2.27-.24,2.81-.72.54-.48.81-1.09.81-1.84s-.23-1.35-.7-1.85-1.35-.76-2.64-.76h-1.97v5.18Z"/>
-                    <path d="m20.36,32.59h7.68l4.51,7.83,4.52-7.83h7.64l-8.7,13.49v9.72h-6.93v-9.72l-8.72-13.49Z"/>
-                    <path d="m47.04,55.79v-23.21h11.53c2.14,0,3.77.19,4.9.57,1.13.38,2.04,1.08,2.73,2.11.69,1.03,1.04,2.28,1.04,3.76,0,1.29-.27,2.4-.79,3.33-.53.93-1.26,1.69-2.18,2.27-.59.37-1.4.68-2.43.92.82.29,1.42.57,1.8.86.26.19.62.6,1.11,1.22.48.62.81,1.1.97,1.44l3.35,6.72h-7.82l-3.7-7.09c-.47-.92-.89-1.51-1.25-1.79-.5-.36-1.06-.54-1.69-.54h-.61v9.42h-6.95Zm6.95-13.8h2.92c.32,0,.93-.11,1.83-.32.46-.09.83-.34,1.12-.73.29-.39.44-.84.44-1.35,0-.75-.23-1.32-.69-1.73s-1.32-.6-2.58-.6h-3.04v4.72Z"/>
-                    <path d="m85.03,51.96h-7.85l-1.09,3.83h-7.06l8.41-23.21h7.55l8.41,23.21h-7.24l-1.12-3.83Zm-1.44-5.02l-2.47-8.34-2.45,8.34h4.92Z"/>
-                    <path d="m95.52,32.59h9.1l3.51,14.12,3.48-14.12h9.09v23.21h-5.67v-17.7l-4.37,17.7h-5.13l-4.36-17.7v17.7h-5.67v-23.21Z"/>
-                    <path d="m142.96,32.59h10.28c2.03,0,3.66.28,4.91.85,1.25.57,2.28,1.39,3.09,2.45.81,1.07,1.4,2.31,1.77,3.72.37,1.41.55,2.91.55,4.5,0,2.48-.27,4.4-.82,5.77s-1.3,2.51-2.27,3.43-2.01,1.54-3.12,1.84c-1.52.42-2.89.63-4.12.63h-10.28v-23.21Zm6.92,5.26v12.68h1.69c1.45,0,2.47-.17,3.08-.5s1.09-.91,1.44-1.74.52-2.17.52-4.03c0-2.46-.39-4.14-1.16-5.05-.77-.91-2.06-1.36-3.85-1.36h-1.73Z"/>
-                    <polygon points="128.48 52.91 145.4 25.88 132.55 12.42 128.48 52.91"/>
-                    <polygon points="118.14 20.4 128.48 52.91 132.55 12.42 118.14 20.4" fill="rgba(255,255,255,0.55)"/>
-                    <circle cx="134.49" cy="4.23" r="4.23"/>
-                    <path d="m100.22,66.77c.71.37,1.23.86,1.57,1.48.34.62.49,1.31.45,2.05-.03.75-.24,1.54-.62,2.38-.38.84-.89,1.67-1.54,2.47-.64.81-1.45,1.57-2.41,2.29-.96.72-2,1.35-3.13,1.88-1.12.53-2.39.94-3.81,1.22-1.41.28-2.86.39-4.33.32-.87-.05-1.67-.15-2.4-.32-.73-.17-1.35-.37-1.85-.6-.51-.23-.97-.52-1.38-.86-.41-.34-.75-.66-1-.97s-.48-.66-.68-1.06c-.2-.4-.35-.74-.44-1.01-.09-.27-.19-.58-.3-.91-.07-.6.21-1.05.83-1.33.49-.23.93-.26,1.34-.1.51.22.59.65.24,1.3-.08.14-.18.28-.3.44.78,2.4,2.26,3.75,4.44,4.07,1.82.26,3.85-.21,6.12-1.4,2.01-1.06,3.72-2.43,5.11-4.11,1.59-1.91,2.29-3.65,2.09-5.22-.03-.25-.08-.48-.16-.7-.22-.65-.84-.96-1.85-.92-.99.35-2.08.66-3.3.95-.41.1-.76.12-1.07.04l-.38-.1c-.16-.04-.24-.12-.26-.24-.01-.12.05-.21.2-.27.78-.29,1.54-.63,2.29-1,.75-.38,1.43-.76,2.05-1.15.62-.39,1.2-.81,1.74-1.24.54-.43.99-.84,1.35-1.24.36-.4.66-.79.9-1.17.24-.38.36-.72.36-1.03s-.09-.58-.26-.8c-.32-.37-.98-.25-2,.34-1.02.59-2.08,1.39-3.2,2.4s-2.04,1.88-2.8,2.62-1.19,1.16-1.29,1.29l-.95,1.13h0c-.93,1.47-1.76,2.82-2.47,4.04-.71,1.22-1.24,2.18-1.59,2.88-.35.7-.63,1.29-.84,1.77s-.33.82-.38.99l-.06.25c-.68-.19-1.26-.56-1.73-1.11-.47-.55-.69-1.08-.68-1.61.12-.5.31-1.07.57-1.7.26-.63.57-1.27.93-1.9.36-.64.75-1.31,1.17-2.01.43-.71.87-1.39,1.31-2.05s.89-1.32,1.32-1.98c.43-.66.84-1.29,1.22-1.87.38-.58.72-1.13,1.01-1.66.29-.53.51-.99.67-1.38s.23-.73.23-1-.12-.46-.33-.56c-.2-.09-.56-.07-1.08.08-.52.14-1.1.37-1.75.67-.65.31-1.32.69-2.01,1.15-.7.46-1.33.93-1.9,1.43s-1.03,1.02-1.38,1.59c-.35.56-.5,1.08-.46,1.56.03.12.14.2.33.23s.37.02.51-.05c.24-.08.49-.22.75-.41.26-.19.49-.36.68-.52.19-.16.43-.3.72-.41.29-.11.59-.16.91-.13.91.19,1.28.54,1.12,1.03-.16.44-.66.83-1.5,1.18-1.17.49-2.37.61-3.61.37-.38-.07-.75-.18-1.11-.33-.54-.2-.91-.47-1.12-.8-.21-.33-.27-.68-.17-1.05.1-.37.27-.73.5-1.06.24-.34.53-.66.87-.96,1.29-1.24,3.01-2.28,5.15-3.14,2.14-.86,3.99-1.24,5.54-1.15,1.54.09,2.39.66,2.57,1.72.11.72-.12,1.64-.69,2.76.88-.82,1.78-1.55,2.7-2.18s1.86-1.1,2.81-1.43c.95-.33,1.77-.39,2.44-.2.33.11.64.3.94.58s.55.61.75,1c.2.39.29.83.26,1.33-.03.49-.17,1-.42,1.51s-.72,1.05-1.4,1.61c-.68.56-1.55,1.09-2.58,1.57.72.06,1.35.21,1.87.45Z"/>
-                    <path d="m110.13,71.32c-.09-.03.03-.54.38-1.54.34-1,.43-1.53.28-1.59-.25.1-.61.6-1.09,1.5s-1.04,1.98-1.71,3.25c-.67,1.27-1.27,2.25-1.83,2.95-.16.21-.44.35-.84.43s-.81.09-1.21.05c-.95-.1-1.54-.42-1.79-.95-.24-.53-.19-1.26.15-2.2.08-.24.22-.67.42-1.29.2-.62.38-1.15.52-1.59s.3-.91.46-1.42c.16-.5.29-.9.37-1.18.08-.28.11-.43.1-.45-.08-.09-.02-.19.19-.31.2-.11.4-.2.6-.25.26-.07.57-.11.93-.12.35,0,.69.01,1.01.07.32.06.57.16.75.32.18.16.24.35.18.57-.21.7-.59,1.7-1.12,3.02s-.96,2.38-1.25,3.19-.37,1.22-.23,1.23c.08,0,.46-.61,1.15-1.85.69-1.24,1.36-2.48,2-3.73.03-.04.07-.12.12-.23.1-.19.19-.34.25-.46.06-.11.15-.28.28-.49s.24-.38.35-.5c.1-.12.24-.27.41-.44.17-.17.33-.3.48-.38s.33-.17.55-.23c.22-.07.44-.1.66-.08.22.01.47.06.75.14.28.08.57.21.87.37.58.33.78,1.05.61,2.16-.08.23-.18.46-.32.69-.13.23-.31.46-.53.71-.22.24-.47.43-.75.56s-.6.22-.97.27-.76-.01-1.18-.18Z"/>
-                    <path d="m123.92,69.89c.13-.14.34-.2.61-.18.34.02.44.17.3.45-.05.1-.14.21-.26.33-1.05,1.12-2.2,1.57-3.43,1.35-.16.39-.29.71-.39.95-.11.24-.28.6-.52,1.08s-.52.9-.83,1.24c-.31.34-.63.6-.96.78-.71.38-1.55.55-2.53.51s-1.79-.26-2.45-.68c-.29-.18-.46-.59-.52-1.22-.06-.63,0-1.33.19-2.09.18-.77.43-1.52.74-2.25.31-.73.7-1.32,1.17-1.78s.95-.65,1.44-.58c.24.04.44.02.61-.06.17-.08.33-.19.46-.32.14-.14.3-.27.47-.41s.44-.25.78-.34c.34-.09.74-.13,1.2-.12.53.02.97.21,1.34.57.37.36.58.77.63,1.21.04.26.02.56-.05.92-.07.36-.16.68-.26.96-.1.28-.15.44-.15.45.14.05.3.08.47.09s.36,0,.57-.03c.21-.04.43-.13.67-.27.24-.14.46-.33.67-.57Zm-7.04,4.97c.26.07.54.03.82-.12.28-.15.53-.35.74-.59.21-.24.42-.54.63-.89.21-.35.37-.64.47-.87s.2-.46.3-.67c-.2-.04-.38-.08-.55-.13-.17-.05-.35-.13-.53-.23-.18-.1-.33-.22-.42-.35s-.14-.3-.14-.51c0-.21.08-.44.23-.69.09-.16.28-.28.57-.35.29-.07.58-.09.89-.07.3.02.55.08.75.16.13-.48.15-.92.06-1.33-.09-.41-.28-.65-.55-.72h-.02c-.22-.03-.5.12-.82.44-.32.32-.63.73-.94,1.24-.3.5-.59,1.06-.87,1.67-.28.61-.49,1.19-.64,1.74-.15.55-.24,1.04-.27,1.46-.03.42.07.68.3.8Z"/>
-                    <path d="m138.03,70.74s.12-.06.23-.06.22.02.33.05.15.07.14.1c-.18.33-.44.62-.76.87-.32.25-.64.43-.97.54-.32.11-.63.21-.94.27s-.55.12-.75.14-.3.05-.32.07c-.36.95-.72,1.77-1.1,2.44-.37.68-.72,1.21-1.04,1.59-.32.38-.67.67-1.06.88-.38.21-.73.33-1.04.38-.31.05-.67.07-1.08.05-1.03-.06-1.72-.35-2.07-.87-.35-.52-.47-1.28-.35-2.27-.87.82-1.43,1.25-1.68,1.3-.5.12-.95.18-1.35.18s-.73-.05-1-.14c-.26-.1-.49-.23-.67-.41-.18-.17-.32-.38-.42-.6-.09-.23-.15-.48-.19-.75-.03-.27-.04-.54-.02-.81.02-.27.06-.54.12-.82.06-.28.12-.53.19-.76.07-.23.14-.44.24-.65.03-.08.18-.47.47-1.15.29-.69.56-1.3.8-1.83s.44-.92.6-1.16c.33-.51.8-.67,1.42-.48.53.17.93.49,1.2.98.22.4.26.78.12,1.13-1.16,3.06-1.78,4.97-1.85,5.73-.05.43.01.64.2.62.07,0,.32-.18.76-.58.44-.39.9-.83,1.37-1.3.82-2.33,1.72-4.45,2.72-6.33.01-.04.14-.08.39-.11s.53-.02.84.02c.31.04.6.14.87.31.27.17.44.41.52.74.08.33,0,.78-.24,1.35,0,0-.06.15-.18.42-.12.27-.23.53-.33.78-.11.25-.24.58-.42,1-.17.41-.32.8-.45,1.15-.13.36-.27.74-.41,1.16-.14.42-.24.79-.31,1.12-.07.33-.11.64-.13.92s0,.51.09.67.2.25.38.27c.2.02.39-.06.59-.23.2-.17.39-.43.59-.79.2-.36.38-.7.53-1.02.16-.33.35-.74.56-1.24.22-.5.38-.88.5-1.13-.97-.43-1.24-1.17-.81-2.21.13-.28.4-.47.82-.56.41-.09.79-.07,1.13.05.5-1.25.8-2.01.89-2.27.07-.22-.03-.35-.3-.4-.33-.1-.34-.22-.04-.36.39-.17.83-.23,1.3-.18.64.07.86.36.65.87-.18.43-.77,1.86-1.76,4.29.3.04.72-.03,1.26-.21s.93-.42,1.16-.74Z"/>
-                    <path d="m141.66,72.52c.59.77.95,1.28,1.08,1.54.25.51.3.95.14,1.32-.2.48-.74.79-1.64.95-.82.14-1.75.12-2.8-.05-.41-.06-.76-.14-1.05-.23-.49-.15-.87-.39-1.14-.74-.18-.23-.06-.34.38-.34.39,0,.72.07.99.22.21.12.38.2.49.25.34.11.61.15.81.11.2-.04.35-.15.45-.34.14-.25.15-.55.02-.92-.11-.32-.32-.69-.63-1.1-.09-.12-.26-.33-.49-.63-.24-.3-.43-.56-.59-.78-.16-.22-.3-.44-.41-.66h-.06c0-.07,0-.12-.02-.16-.04-.16-.11-.29-.2-.41.01-.03.02-.06.02-.1-.37-1.4.49-2.57,2.56-3.5,1.04-.46,2.26-.51,3.65-.15.39.1.7.25.91.44.1.09.22.11.35.04.4-.17.84-.17,1.34-.03.21.05.3.15.26.27-.21.77-.86,1.66-1.93,2.67-.39.38-.96.5-1.7.38-.83-.13-1.14-.42-.95-.88.24-.53.67-1.09,1.3-1.66.12-.1.12-.2,0-.3-.05-.04-.11-.09-.18-.15-.16-.13-.27-.19-.33-.19s-.2.07-.42.22c-.04.03-.07.05-.08.05-1.3.87-1.7,1.94-1.2,3.2.18.47.54,1.03,1.07,1.69Z"/>
-                    <path d="m154.72,71.22c.12-.1.32-.11.61-.03.17.06.22.13.14.19-.37.34-.82.76-1.34,1.27-.53.51-.95.92-1.26,1.23-.32.31-.69.65-1.13,1.01-.44.36-.84.64-1.18.84-.35.2-.75.36-1.19.49-.45.13-.89.18-1.34.17-1.68-.05-2.76-.65-3.24-1.79-.45-1.08-.3-2.35.43-3.82.72-1.44,1.76-2.55,3.12-3.34,1.21-.71,2.46-1,3.75-.87.42.05.73.18.94.39s.3.48.29.8-.08.65-.19.97c-.11.33-.27.66-.46.99-.28.49-.61.94-1.01,1.33s-.76.69-1.1.9c-.34.21-.68.38-1.01.52-.33.14-.58.23-.75.27s-.28.06-.32.05c-.18.2-.32.63-.39,1.28-.08.65-.05,1.02.1,1.1.14.1.32.16.52.16.2,0,.43-.03.68-.12s.51-.21.77-.34c.26-.14.55-.32.85-.54s.58-.43.85-.63c.26-.2.55-.44.86-.7.31-.27.57-.49.78-.68.21-.19.44-.4.7-.62.26-.23.44-.39.54-.49Zm-2.78-3.38c-.46.15-.98.6-1.56,1.37-.58.77-1.08,1.64-1.52,2.62.29-.07.58-.2.86-.38s.54-.38.77-.61c.23-.23.44-.47.64-.73.2-.26.36-.52.5-.77.14-.25.24-.49.32-.7s.11-.39.11-.54-.04-.23-.12-.27Z"/>
-                    <path d="m160.5,71.32c-.09-.03.03-.54.38-1.54.34-1,.43-1.53.28-1.59-.25.1-.61.6-1.09,1.5s-1.04,1.98-1.71,3.25c-.67,1.27-1.27,2.25-1.83,2.95-.16.21-.44.35-.84.43s-.81.09-1.21.05c-.95-.1-1.54-.42-1.79-.95-.24-.53-.19-1.26.15-2.2.08-.24.22-.67.42-1.29.2-.62.38-1.15.52-1.59s.3-.91.46-1.42c.16-.5.29-.9.37-1.18.08-.28.11-.43.1-.45-.08-.09-.02-.19.19-.31.2-.11.4-.2.6-.25.26-.07.57-.11.93-.12.35,0,.69.01,1.01.07.32.06.57.16.75.32.18.16.24.35.18.57-.21.7-.59,1.7-1.12,3.02s-.96,2.38-1.25,3.19-.37,1.22-.23,1.23c.08,0,.46-.61,1.15-1.85.69-1.24,1.36-2.48,2-3.73.03-.04.07-.12.12-.23.1-.19.19-.34.25-.46.06-.11.15-.28.28-.49s.24-.38.35-.5c.1-.12.24-.27.41-.44.17-.17.33-.3.48-.38s.33-.17.55-.23c.22-.07.44-.1.66-.08.22.01.47.06.75.14.28.08.57.21.87.37.58.33.78,1.05.61,2.16-.08.23-.18.46-.32.69-.13.23-.31.46-.53.71-.22.24-.47.43-.75.56s-.6.22-.97.27-.76-.01-1.18-.18Z"/>
-                  </g>
+                <svg id="pyramid-logo-center" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 164.31 80.9"
+                    aria-label="Pyramid Browser">
+                    <g fill="white">
+                        <path
+                            d="m0,32.59h11.5c2.5,0,4.38.62,5.63,1.85,1.25,1.24,1.87,2.99,1.87,5.27s-.68,4.17-2.04,5.49c-1.36,1.32-3.43,1.98-6.22,1.98h-3.79v8.61H0v-23.21Zm6.95,9.89h1.69c1.33,0,2.27-.24,2.81-.72.54-.48.81-1.09.81-1.84s-.23-1.35-.7-1.85-1.35-.76-2.64-.76h-1.97v5.18Z" />
+                        <path d="m20.36,32.59h7.68l4.51,7.83,4.52-7.83h7.64l-8.7,13.49v9.72h-6.93v-9.72l-8.72-13.49Z" />
+                        <path
+                            d="m47.04,55.79v-23.21h11.53c2.14,0,3.77.19,4.9.57,1.13.38,2.04,1.08,2.73,2.11.69,1.03,1.04,2.28,1.04,3.76,0,1.29-.27,2.4-.79,3.33-.53.93-1.26,1.69-2.18,2.27-.59.37-1.4.68-2.43.92.82.29,1.42.57,1.8.86.26.19.62.6,1.11,1.22.48.62.81,1.1.97,1.44l3.35,6.72h-7.82l-3.7-7.09c-.47-.92-.89-1.51-1.25-1.79-.5-.36-1.06-.54-1.69-.54h-.61v9.42h-6.95Zm6.95-13.8h2.92c.32,0,.93-.11,1.83-.32.46-.09.83-.34,1.12-.73.29-.39.44-.84.44-1.35,0-.75-.23-1.32-.69-1.73s-1.32-.6-2.58-.6h-3.04v4.72Z" />
+                        <path
+                            d="m85.03,51.96h-7.85l-1.09,3.83h-7.06l8.41-23.21h7.55l8.41,23.21h-7.24l-1.12-3.83Zm-1.44-5.02l-2.47-8.34-2.45,8.34h4.92Z" />
+                        <path
+                            d="m95.52,32.59h9.1l3.51,14.12,3.48-14.12h9.09v23.21h-5.67v-17.7l-4.37,17.7h-5.13l-4.36-17.7v17.7h-5.67v-23.21Z" />
+                        <path
+                            d="m142.96,32.59h10.28c2.03,0,3.66.28,4.91.85,1.25.57,2.28,1.39,3.09,2.45.81,1.07,1.4,2.31,1.77,3.72.37,1.41.55,2.91.55,4.5,0,2.48-.27,4.4-.82,5.77s-1.3,2.51-2.27,3.43-2.01,1.54-3.12,1.84c-1.52.42-2.89.63-4.12.63h-10.28v-23.21Zm6.92,5.26v12.68h1.69c1.45,0,2.47-.17,3.08-.5s1.09-.91,1.44-1.74.52-2.17.52-4.03c0-2.46-.39-4.14-1.16-5.05-.77-.91-2.06-1.36-3.85-1.36h-1.73Z" />
+                        <polygon points="128.48 52.91 145.4 25.88 132.55 12.42 128.48 52.91" />
+                        <polygon points="118.14 20.4 128.48 52.91 132.55 12.42 118.14 20.4"
+                            fill="rgba(255,255,255,0.55)" />
+                        <circle cx="134.49" cy="4.23" r="4.23" />
+                        <path
+                            d="m100.22,66.77c.71.37,1.23.86,1.57,1.48.34.62.49,1.31.45,2.05-.03.75-.24,1.54-.62,2.38-.38.84-.89,1.67-1.54,2.47-.64.81-1.45,1.57-2.41,2.29-.96.72-2,1.35-3.13,1.88-1.12.53-2.39.94-3.81,1.22-1.41.28-2.86.39-4.33.32-.87-.05-1.67-.15-2.4-.32-.73-.17-1.35-.37-1.85-.6-.51-.23-.97-.52-1.38-.86-.41-.34-.75-.66-1-.97s-.48-.66-.68-1.06c-.2-.4-.35-.74-.44-1.01-.09-.27-.19-.58-.3-.91-.07-.6.21-1.05.83-1.33.49-.23.93-.26,1.34-.1.51.22.59.65.24,1.3-.08.14-.18.28-.3.44.78,2.4,2.26,3.75,4.44,4.07,1.82.26,3.85-.21,6.12-1.4,2.01-1.06,3.72-2.43,5.11-4.11,1.59-1.91,2.29-3.65,2.09-5.22-.03-.25-.08-.48-.16-.7-.22-.65-.84-.96-1.85-.92-.99.35-2.08.66-3.3.95-.41.1-.76.12-1.07.04l-.38-.1c-.16-.04-.24-.12-.26-.24-.01-.12.05-.21.2-.27.78-.29,1.54-.63,2.29-1,.75-.38,1.43-.76,2.05-1.15.62-.39,1.2-.81,1.74-1.24.54-.43.99-.84,1.35-1.24.36-.4.66-.79.9-1.17.24-.38.36-.72.36-1.03s-.09-.58-.26-.8c-.32-.37-.98-.25-2,.34-1.02.59-2.08,1.39-3.2,2.4s-2.04,1.88-2.8,2.62-1.19,1.16-1.29,1.29l-.95,1.13h0c-.93,1.47-1.76,2.82-2.47,4.04-.71,1.22-1.24,2.18-1.59,2.88-.35.7-.63,1.29-.84,1.77s-.33.82-.38.99l-.06.25c-.68-.19-1.26-.56-1.73-1.11-.47-.55-.69-1.08-.68-1.61.12-.5.31-1.07.57-1.7.26-.63.57-1.27.93-1.9.36-.64.75-1.31,1.17-2.01.43-.71.87-1.39,1.31-2.05s.89-1.32,1.32-1.98c.43-.66.84-1.29,1.22-1.87.38-.58.72-1.13,1.01-1.66.29-.53.51-.99.67-1.38s.23-.73.23-1-.12-.46-.33-.56c-.2-.09-.56-.07-1.08.08-.52.14-1.1.37-1.75.67-.65.31-1.32.69-2.01,1.15-.7.46-1.33.93-1.9,1.43s-1.03,1.02-1.38,1.59c-.35.56-.5,1.08-.46,1.56.03.12.14.2.33.23s.37.02.51-.05c.24-.08.49-.22.75-.41.26-.19.49-.36.68-.52.19-.16.43-.3.72-.41.29-.11.59-.16.91-.13.91.19,1.28.54,1.12,1.03-.16.44-.66.83-1.5,1.18-1.17.49-2.37.61-3.61.37-.38-.07-.75-.18-1.11-.33-.54-.2-.91-.47-1.12-.8-.21-.33-.27-.68-.17-1.05.1-.37.27-.73.5-1.06.24-.34.53-.66.87-.96,1.29-1.24,3.01-2.28,5.15-3.14,2.14-.86,3.99-1.24,5.54-1.15,1.54.09,2.39.66,2.57,1.72.11.72-.12,1.64-.69,2.76.88-.82,1.78-1.55,2.7-2.18s1.86-1.1,2.81-1.43c.95-.33,1.77-.39,2.44-.2.33.11.64.3.94.58s.55.61.75,1c.2.39.29.83.26,1.33-.03.49-.17,1-.42,1.51s-.72,1.05-1.4,1.61c-.68.56-1.55,1.09-2.58,1.57.72.06,1.35.21,1.87.45Z" />
+                        <path
+                            d="m110.13,71.32c-.09-.03.03-.54.38-1.54.34-1,.43-1.53.28-1.59-.25.1-.61.6-1.09,1.5s-1.04,1.98-1.71,3.25c-.67,1.27-1.27,2.25-1.83,2.95-.16.21-.44.35-.84.43s-.81.09-1.21.05c-.95-.1-1.54-.42-1.79-.95-.24-.53-.19-1.26.15-2.2.08-.24.22-.67.42-1.29.2-.62.38-1.15.52-1.59s.3-.91.46-1.42c.16-.5.29-.9.37-1.18.08-.28.11-.43.1-.45-.08-.09-.02-.19.19-.31.2-.11.4-.2.6-.25.26-.07.57-.11.93-.12.35,0,.69.01,1.01.07.32.06.57.16.75.32.18.16.24.35.18.57-.21.7-.59,1.7-1.12,3.02s-.96,2.38-1.25,3.19-.37,1.22-.23,1.23c.08,0,.46-.61,1.15-1.85.69-1.24,1.36-2.48,2-3.73.03-.04.07-.12.12-.23.1-.19.19-.34.25-.46.06-.11.15-.28.28-.49s.24-.38.35-.5c.1-.12.24-.27.41-.44.17-.17.33-.3.48-.38s.33-.17.55-.23c.22-.07.44-.1.66-.08.22.01.47.06.75.14.28.08.57.21.87.37.58.33.78,1.05.61,2.16-.08.23-.18.46-.32.69-.13.23-.31.46-.53.71-.22.24-.47.43-.75.56s-.6.22-.97.27-.76-.01-1.18-.18Z" />
+                        <path
+                            d="m123.92,69.89c.13-.14.34-.2.61-.18.34.02.44.17.3.45-.05.1-.14.21-.26.33-1.05,1.12-2.2,1.57-3.43,1.35-.16.39-.29.71-.39.95-.11.24-.28.6-.52,1.08s-.52.9-.83,1.24c-.31.34-.63.6-.96.78-.71.38-1.55.55-2.53.51s-1.79-.26-2.45-.68c-.29-.18-.46-.59-.52-1.22-.06-.63,0-1.33.19-2.09.18-.77.43-1.52.74-2.25.31-.73.7-1.32,1.17-1.78s.95-.65,1.44-.58c.24.04.44.02.61-.06.17-.08.33-.19.46-.32.14-.14.3-.27.47-.41s.44-.25.78-.34c.34-.09.74-.13,1.2-.12.53.02.97.21,1.34.57.37.36.58.77.63,1.21.04.26.02.56-.05.92-.07.36-.16.68-.26.96-.1.28-.15.44-.15.45.14.05.3.08.47.09s.36,0,.57-.03c.21-.04.43-.13.67-.27.24-.14.46-.33.67-.57Zm-7.04,4.97c.26.07.54.03.82-.12.28-.15.53-.35.74-.59.21-.24.42-.54.63-.89.21-.35.37-.64.47-.87s.2-.46.3-.67c-.2-.04-.38-.08-.55-.13-.17-.05-.35-.13-.53-.23-.18-.1-.33-.22-.42-.35s-.14-.3-.14-.51c0-.21.08-.44.23-.69.09-.16.28-.28.57-.35.29-.07.58-.09.89-.07.3.02.55.08.75.16.13-.48.15-.92.06-1.33-.09-.41-.28-.65-.55-.72h-.02c-.22-.03-.5.12-.82.44-.32.32-.63.73-.94,1.24-.3.5-.59,1.06-.87,1.67-.28.61-.49,1.19-.64,1.74-.15.55-.24,1.04-.27,1.46-.03.42.07.68.3.8Z" />
+                        <path
+                            d="m138.03,70.74s.12-.06.23-.06.22.02.33.05.15.07.14.1c-.18.33-.44.62-.76.87-.32.25-.64.43-.97.54-.32.11-.63.21-.94.27s-.55.12-.75.14-.3.05-.32.07c-.36.95-.72,1.77-1.1,2.44-.37.68-.72,1.21-1.04,1.59-.32.38-.67.67-1.06.88-.38.21-.73.33-1.04.38-.31.05-.67.07-1.08.05-1.03-.06-1.72-.35-2.07-.87-.35-.52-.47-1.28-.35-2.27-.87.82-1.43,1.25-1.68,1.3-.5.12-.95.18-1.35.18s-.73-.05-1-.14c-.26-.1-.49-.23-.67-.41-.18-.17-.32-.38-.42-.6-.09-.23-.15-.48-.19-.75-.03-.27-.04-.54-.02-.81.02-.27.06-.54.12-.82.06-.28.12-.53.19-.76.07-.23.14-.44.24-.65.03-.08.18-.47.47-1.15.29-.69.56-1.3.8-1.83s.44-.92.6-1.16c.33-.51.8-.67,1.42-.48.53.17.93.49,1.2.98.22.4.26.78.12,1.13-1.16,3.06-1.78,4.97-1.85,5.73-.05.43.01.64.2.62.07,0,.32-.18.76-.58.44-.39.9-.83,1.37-1.3.82-2.33,1.72-4.45,2.72-6.33.01-.04.14-.08.39-.11s.53-.02.84.02c.31.04.6.14.87.31.27.17.44.41.52.74.08.33,0,.78-.24,1.35,0,0-.06.15-.18.42-.12.27-.23.53-.33.78-.11.25-.24.58-.42,1-.17.41-.32.8-.45,1.15-.13.36-.27.74-.41,1.16-.14.42-.24.79-.31,1.12-.07.33-.11.64-.13.92s0,.51.09.67.2.25.38.27c.2.02.39-.06.59-.23.2-.17.39-.43.59-.79.2-.36.38-.7.53-1.02.16-.33.35-.74.56-1.24.22-.5.38-.88.5-1.13-.97-.43-1.24-1.17-.81-2.21.13-.28.4-.47.82-.56.41-.09.79-.07,1.13.05.5-1.25.8-2.01.89-2.27.07-.22-.03-.35-.3-.4-.33-.1-.34-.22-.04-.36.39-.17.83-.23,1.3-.18.64.07.86.36.65.87-.18.43-.77,1.86-1.76,4.29.3.04.72-.03,1.26-.21s.93-.42,1.16-.74Z" />
+                        <path
+                            d="m141.66,72.52c.59.77.95,1.28,1.08,1.54.25.51.3.95.14,1.32-.2.48-.74.79-1.64.95-.82.14-1.75.12-2.8-.05-.41-.06-.76-.14-1.05-.23-.49-.15-.87-.39-1.14-.74-.18-.23-.06-.34.38-.34.39,0,.72.07.99.22.21.12.38.2.49.25.34.11.61.15.81.11.2-.04.35-.15.45-.34.14-.25.15-.55.02-.92-.11-.32-.32-.69-.63-1.1-.09-.12-.26-.33-.49-.63-.24-.3-.43-.56-.59-.78-.16-.22-.3-.44-.41-.66h-.06c0-.07,0-.12-.02-.16-.04-.16-.11-.29-.2-.41.01-.03.02-.06.02-.1-.37-1.4.49-2.57,2.56-3.5,1.04-.46,2.26-.51,3.65-.15.39.1.7.25.91.44.1.09.22.11.35.04.4-.17.84-.17,1.34-.03.21.05.3.15.26.27-.21.77-.86,1.66-1.93,2.67-.39.38-.96.5-1.7.38-.83-.13-1.14-.42-.95-.88.24-.53.67-1.09,1.3-1.66.12-.1.12-.2,0-.3-.05-.04-.11-.09-.18-.15-.16-.13-.27-.19-.33-.19s-.2.07-.42.22c-.04.03-.07.05-.08.05-1.3.87-1.7,1.94-1.2,3.2.18.47.54,1.03,1.07,1.69Z" />
+                        <path
+                            d="m154.72,71.22c.12-.1.32-.11.61-.03.17.06.22.13.14.19-.37.34-.82.76-1.34,1.27-.53.51-.95.92-1.26,1.23-.32.31-.69.65-1.13,1.01-.44.36-.84.64-1.18.84-.35.2-.75.36-1.19.49-.45.13-.89.18-1.34.17-1.68-.05-2.76-.65-3.24-1.79-.45-1.08-.3-2.35.43-3.82.72-1.44,1.76-2.55,3.12-3.34,1.21-.71,2.46-1,3.75-.87.42.05.73.18.94.39s.3.48.29.8-.08.65-.19.97c-.11.33-.27.66-.46.99-.28.49-.61.94-1.01,1.33s-.76.69-1.1.9c-.34.21-.68.38-1.01.52-.33.14-.58.23-.75.27s-.28.06-.32.05c-.18.2-.32.63-.39,1.28-.08.65-.05,1.02.1,1.1.14.1.32.16.52.16.2,0,.43-.03.68-.12s.51-.21.77-.34c.26-.14.55-.32.85-.54s.58-.43.85-.63c.26-.2.55-.44.86-.7.31-.27.57-.49.78-.68.21-.19.44-.4.7-.62.26-.23.44-.39.54-.49Zm-2.78-3.38c-.46.15-.98.6-1.56,1.37-.58.77-1.08,1.64-1.52,2.62.29-.07.58-.2.86-.38s.54-.38.77-.61c.23-.23.44-.47.64-.73.2-.26.36-.52.5-.77.14-.25.24-.49.32-.7s.11-.39.11-.54-.04-.23-.12-.27Z" />
+                        <path
+                            d="m160.5,71.32c-.09-.03.03-.54.38-1.54.34-1,.43-1.53.28-1.59-.25.1-.61.6-1.09,1.5s-1.04,1.98-1.71,3.25c-.67,1.27-1.27,2.25-1.83,2.95-.16.21-.44.35-.84.43s-.81.09-1.21.05c-.95-.1-1.54-.42-1.79-.95-.24-.53-.19-1.26.15-2.2.08-.24.22-.67.42-1.29.2-.62.38-1.15.52-1.59s.3-.91.46-1.42c.16-.5.29-.9.37-1.18.08-.28.11-.43.1-.45-.08-.09-.02-.19.19-.31.2-.11.4-.2.6-.25.26-.07.57-.11.93-.12.35,0,.69.01,1.01.07.32.06.57.16.75.32.18.16.24.35.18.57-.21.7-.59,1.7-1.12,3.02s-.96,2.38-1.25,3.19-.37,1.22-.23,1.23c.08,0,.46-.61,1.15-1.85.69-1.24,1.36-2.48,2-3.73.03-.04.07-.12.12-.23.1-.19.19-.34.25-.46.06-.11.15-.28.28-.49s.24-.38.35-.5c.1-.12.24-.27.41-.44.17-.17.33-.3.48-.38s.33-.17.55-.23c.22-.07.44-.1.66-.08.22.01.47.06.75.14.28.08.57.21.87.37.58.33.78,1.05.61,2.16-.08.23-.18.46-.32.69-.13.23-.31.46-.53.71-.22.24-.47.43-.75.56s-.6.22-.97.27-.76-.01-1.18-.18Z" />
+                    </g>
                 </svg>
             </section>
- 
+
             <!-- ② Carousel -->
             <section id="ministries-section" class="w-full">
                 <button id="carousel-prev" class="carousel-arrow" aria-label="Précédent">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="15 18 9 12 15 6"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <polyline points="15 18 9 12 15 6" />
                     </svg>
                 </button>
- 
+
                 <div class="carousel-viewport" id="carousel-viewport">
                     <div class="carousel-track" id="carousel-track">
-                        <a href="https://www.prc.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
-                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="assets/logo/Primatures.png" class="w-7 h-7 object-contain" draggable="false" alt="Présidence"></div>
-                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">Présidence</span>
+                        <a href="https://www.prc.cm" target="_blank" rel="noopener"
+                            class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div
+                                class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
+                                <img src="assets/logo/Primatures.png" class="w-7 h-7 object-contain" draggable="false"
+                                    alt="Présidence"></div>
+                            <span
+                                class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">Présidence</span>
                         </a>
-                        <a href="https://www.spm.gov.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
-                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="assets/logo/Primatures.png" class="w-7 h-7 object-contain" draggable="false" alt="Primature"></div>
-                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">Primature</span>
+                        <a href="https://www.spm.gov.cm" target="_blank" rel="noopener"
+                            class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div
+                                class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
+                                <img src="assets/logo/Primatures.png" class="w-7 h-7 object-contain" draggable="false"
+                                    alt="Primature"></div>
+                            <span
+                                class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">Primature</span>
                         </a>
-                        <a href="https://www.minfi.gov.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
-                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.minfi.gov.cm" onerror="this.src='assets/logo/minfi cm.png';this.onerror=null;" class="w-7 h-7 object-contain" draggable="false" alt="MINFI"></div>
-                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">MINFI</span>
+                        <a href="https://www.minfi.gov.cm" target="_blank" rel="noopener"
+                            class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div
+                                class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
+                                <img src="https://www.google.com/s2/favicons?sz=128&domain=www.minfi.gov.cm"
+                                    onerror="this.src='assets/logo/minfi cm.png';this.onerror=null;"
+                                    class="w-7 h-7 object-contain" draggable="false" alt="MINFI"></div>
+                            <span
+                                class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">MINFI</span>
                         </a>
-                        <a href="https://www.minpostel.gov.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
-                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="assets/logo/Minpostel.jpeg" class="w-7 h-7 object-contain" draggable="false" alt="MINPOSTEL"></div>
-                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">MINPOSTEL</span>
+                        <a href="https://www.minpostel.gov.cm" target="_blank" rel="noopener"
+                            class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div
+                                class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
+                                <img src="assets/logo/Minpostel.jpeg" class="w-7 h-7 object-contain" draggable="false"
+                                    alt="MINPOSTEL"></div>
+                            <span
+                                class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">MINPOSTEL</span>
                         </a>
-                        <a href="https://www.minjec.gov.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
-                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.minjec.gov.cm" onerror="this.src='assets/logo/Minjec.jpg';this.onerror=null;" class="w-7 h-7 object-contain" draggable="false" alt="MINJEC"></div>
-                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">MINJEC</span>
+                        <a href="https://www.minjec.gov.cm" target="_blank" rel="noopener"
+                            class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div
+                                class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
+                                <img src="https://www.google.com/s2/favicons?sz=128&domain=www.minjec.gov.cm"
+                                    onerror="this.src='assets/logo/Minjec.jpg';this.onerror=null;"
+                                    class="w-7 h-7 object-contain" draggable="false" alt="MINJEC"></div>
+                            <span
+                                class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">MINJEC</span>
                         </a>
-                        <a href="https://www.cnps.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
-                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.cnps.cm" onerror="this.src='assets/logo/cnps.jpg';this.onerror=null;" class="w-7 h-7 object-contain" draggable="false" alt="CNPS"></div>
-                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">CNPS</span>
+                        <a href="https://www.cnps.cm" target="_blank" rel="noopener"
+                            class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div
+                                class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
+                                <img src="https://www.google.com/s2/favicons?sz=128&domain=www.cnps.cm"
+                                    onerror="this.src='assets/logo/cnps.jpg';this.onerror=null;"
+                                    class="w-7 h-7 object-contain" draggable="false" alt="CNPS"></div>
+                            <span
+                                class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">CNPS</span>
                         </a>
-                        <a href="https://feicom.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
-                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="https://www.google.com/s2/favicons?sz=128&domain=feicom.cm" onerror="this.src='assets/logo/feicom.png';this.onerror=null;" class="w-7 h-7 object-contain" draggable="false" alt="FEICOM"></div>
-                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">FEICOM</span>
+                        <a href="https://feicom.cm" target="_blank" rel="noopener"
+                            class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div
+                                class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
+                                <img src="https://www.google.com/s2/favicons?sz=128&domain=feicom.cm"
+                                    onerror="this.src='assets/logo/feicom.png';this.onerror=null;"
+                                    class="w-7 h-7 object-contain" draggable="false" alt="FEICOM"></div>
+                            <span
+                                class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">FEICOM</span>
                         </a>
-                        <a href="https://www.antic.cm" target="_blank" rel="noopener" class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
-                            <div class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden"><img src="assets/logo/ANTIC.png" class="w-7 h-7 object-contain" draggable="false" alt="ANTIC"></div>
-                            <span class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">ANTIC</span>
+                        <a href="https://www.antic.cm" target="_blank" rel="noopener"
+                            class="carousel-item flex flex-col items-center gap-1 group cursor-pointer flex-shrink-0">
+                            <div
+                                class="w-11 h-11 rounded-xl bg-white flex items-center justify-center border-2 border-primary hover:border-primary-light hover:shadow-primary-glow overflow-hidden">
+                                <img src="assets/logo/ANTIC.png" class="w-7 h-7 object-contain" draggable="false"
+                                    alt="ANTIC"></div>
+                            <span
+                                class="text-[8px] font-label tracking-wider text-on-surface-variant group-hover:text-primary uppercase select-none">ANTIC</span>
                         </a>
                     </div>
                 </div>
- 
+
                 <button id="carousel-next" class="carousel-arrow" aria-label="Suivant">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="9 18 15 12 9 6"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <polyline points="9 18 15 12 9 6" />
                     </svg>
                 </button>
             </section>
- 
+
             <!-- ③ Barre de recherche -->
             <section class="w-full max-w-lg px-5">
                 <div class="relative group">
-                    <div class="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-1000"></div>
-                    <div class="relative flex items-center bg-white rounded-xl border border-outline-variant/20 search-focus px-4 py-3">
+                    <div
+                        class="absolute -inset-0.5 bg-gradient-to-r from-primary/0 via-primary/20 to-primary/0 rounded-xl blur opacity-0 group-focus-within:opacity-100 transition duration-1000">
+                    </div>
+                    <div
+                        class="relative flex items-center bg-white rounded-xl border border-outline-variant/20 search-focus px-4 py-3">
                         <img src="product_logo(1).svg" alt="Logo" class="h-7 w-auto mr-3 select-none flex-shrink-0">
-                        <input id="searchInput" class="bg-transparent border-none focus:ring-0 w-full text-surface font-body text-sm placeholder-surface/40 outline-none" placeholder="Explorer le web..." type="text" autocomplete="off">
-                        <button id="searchBtn" class="ml-3 text-primary p-1 hover:scale-110 flex-shrink-0" style="transition:transform .2s ease"><i class="fas fa-search text-sm"></i></button>
+                        <input id="searchInput"
+                            class="bg-transparent border-none focus:ring-0 w-full text-surface font-body text-sm placeholder-surface/40 outline-none"
+                            placeholder="Explorer le web..." type="text" autocomplete="off">
+                        <button id="searchBtn" class="ml-3 text-primary p-1 hover:scale-110 flex-shrink-0"
+                            style="transition:transform .2s ease"><i class="fas fa-search text-sm"></i></button>
                     </div>
                 </div>
             </section>
- 
+
             <!-- ④ Sites Partenaires -->
             <section class="w-full max-w-5xl px-5">
                 <div class="grid grid-cols-4 md:grid-cols-7 gap-2.5 md:gap-4 items-center justify-items-center">
-                    <a href="https://www.camtel.cm" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Camtel"><img src="assets/logo/Camtel.png" class="w-full h-full object-contain" alt="Camtel"></a>
-                    <a href="https://sourcedupays.com" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Source du Pays"><img src="https://www.google.com/s2/favicons?sz=128&domain=sourcedupays.com" onerror="this.src='assets/logo/Source du Pays.png';this.onerror=null;" class="w-full h-full object-contain" alt="Source du Pays"></a>
-                    <a href="https://www.cyberix.fr" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Cyberix"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.cyberix.fr" onerror="this.src='assets/logo/Cyberix.png';this.onerror=null;" class="w-full h-full object-contain" alt="Cyberix"></a>
-                    <a href="https://st.digital/cameroun" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="ST Digital"><img src="https://www.google.com/s2/favicons?sz=128&domain=st.digital" onerror="this.src='assets/logo/ST Digital.png';this.onerror=null;" class="w-full h-full object-contain" alt="ST Digital"></a>
-                    <a href="https://maviance.cm/" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Maviance"><img src="https://www.google.com/s2/favicons?sz=128&domain=maviance.cm" onerror="this.src='assets/logo/maviance.png';this.onerror=null;" class="w-full h-full object-contain" alt="Maviance"></a>
-                    <a href="https://pak.cm/" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Port de Kribi"><img src="https://www.google.com/s2/favicons?sz=128&domain=pak.cm" onerror="this.src='assets/logo/Port autonome Kribi.png';this.onerror=null;" class="w-full h-full object-contain" alt="Port de Kribi"></a>
-                    <a href="https://www.nexah.net/" target="_blank" rel="noopener" class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden" title="Nexah"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.nexah.net" onerror="this.src='assets/logo/nexah.png';this.onerror=null;" class="w-full h-full object-contain" alt="Nexah"></a>
+                    <a href="https://www.camtel.cm" target="_blank" rel="noopener"
+                        class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                        title="Camtel"><img src="assets/logo/Camtel.png" class="w-full h-full object-contain"
+                            alt="Camtel"></a>
+                    <a href="https://sourcedupays.com" target="_blank" rel="noopener"
+                        class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                        title="Source du Pays"><img
+                            src="https://www.google.com/s2/favicons?sz=128&domain=sourcedupays.com"
+                            onerror="this.src='assets/logo/Source du Pays.png';this.onerror=null;"
+                            class="w-full h-full object-contain" alt="Source du Pays"></a>
+                    <a href="https://www.cyberix.fr" target="_blank" rel="noopener"
+                        class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                        title="Cyberix"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.cyberix.fr"
+                            onerror="this.src='assets/logo/Cyberix.png';this.onerror=null;"
+                            class="w-full h-full object-contain" alt="Cyberix"></a>
+                    <a href="https://st.digital/cameroun" target="_blank" rel="noopener"
+                        class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                        title="ST Digital"><img src="https://www.google.com/s2/favicons?sz=128&domain=st.digital"
+                            onerror="this.src='assets/logo/ST Digital.png';this.onerror=null;"
+                            class="w-full h-full object-contain" alt="ST Digital"></a>
+                    <a href="https://maviance.cm/" target="_blank" rel="noopener"
+                        class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                        title="Maviance"><img src="https://www.google.com/s2/favicons?sz=128&domain=maviance.cm"
+                            onerror="this.src='assets/logo/maviance.png';this.onerror=null;"
+                            class="w-full h-full object-contain" alt="Maviance"></a>
+                    <a href="https://pak.cm/" target="_blank" rel="noopener"
+                        class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                        title="Port de Kribi"><img src="https://www.google.com/s2/favicons?sz=128&domain=pak.cm"
+                            onerror="this.src='assets/logo/Port autonome Kribi.png';this.onerror=null;"
+                            class="w-full h-full object-contain" alt="Port de Kribi"></a>
+                    <a href="https://www.nexah.net/" target="_blank" rel="noopener"
+                        class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                        title="Nexah"><img src="https://www.google.com/s2/favicons?sz=128&domain=www.nexah.net"
+                            onerror="this.src='assets/logo/nexah.png';this.onerror=null;"
+                            class="w-full h-full object-contain" alt="Nexah"></a>
                 </div>
             </section>
- 
+
             <!-- ⑤ Raccourcis Utilisateur -->
             <section class="w-full max-w-5xl px-5">
-                <div id="siteGrid" class="grid grid-cols-4 md:grid-cols-7 gap-2.5 md:gap-4 items-center justify-items-center">
+                <div id="siteGrid"
+                    class="grid grid-cols-4 md:grid-cols-7 gap-2.5 md:gap-4 items-center justify-items-center">
                     <button id="addShortcutBtn"
-                            class="sc-item w-14 h-14 md:w-[72px] md:h-[72px] rounded-xl bg-surface-container-low border-2 border-dashed border-primary/20 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 hover:border-primary/60 group card-hover"
-                            style="transition: background-color .2s, border-color .2s, box-shadow .2s">
-                        <div class="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110" style="transition:transform .2s"><i class="fas fa-plus text-xs"></i></div>
+                        class="sc-item w-14 h-14 md:w-[72px] md:h-[72px] rounded-xl bg-surface-container-low border-2 border-dashed border-primary/20 flex flex-col items-center justify-center gap-1 hover:bg-primary/5 hover:border-primary/60 group card-hover"
+                        style="transition: background-color .2s, border-color .2s, box-shadow .2s">
+                        <div class="w-7 h-7 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110"
+                            style="transition:transform .2s"><i class="fas fa-plus text-xs"></i></div>
                         <span class="text-[8px] font-headline tracking-widest uppercase text-primary/60">Ajouter</span>
                     </button>
                 </div>
             </section>
- 
+
         </div>
     </main>
- 
-    <!-- Bouton Personnaliser -->
-    <div class="fixed bottom-5 right-5 z-40">
-        <button id="customBtn" class="flex items-center gap-2 px-4 py-2.5 bg-surface-bright rounded-xl border border-outline-variant/15 hover:border-primary/40 hover:shadow-primary-glow glass-button group">
-            <i class="fas fa-wand-magic-sparkles text-primary text-sm"></i>
-            <span class="text-[10px] font-headline tracking-[.2em] uppercase text-on-surface-variant group-hover:text-primary">Personnaliser</span>
+
+    <!-- Bouton Aperçu background -->
+    <div class="fixed bottom-16 right-5 z-40">
+        <button id="bgPreviewBtn"
+            class="flex items-center justify-center w-9 h-9 bg-surface-bright rounded-full border border-outline-variant/15 hover:border-primary/40 hover:shadow-primary-glow glass-button group"
+            title="Aperçu du background">
+            <i class="fas fa-expand text-primary text-xs group-hover:scale-110" style="transition:transform .2s"></i>
         </button>
     </div>
- 
+
+    <!-- Bouton Personnaliser -->
+    <div class="fixed bottom-5 right-5 z-40">
+        <button id="customBtn"
+            class="flex items-center gap-2 px-4 py-2.5 bg-surface-bright rounded-xl border border-outline-variant/15 hover:border-primary/40 hover:shadow-primary-glow glass-button group">
+            <i class="fas fa-wand-magic-sparkles text-primary text-sm"></i>
+            <span
+                class="text-[10px] font-headline tracking-[.2em] uppercase text-on-surface-variant group-hover:text-primary">Personnaliser</span>
+        </button>
+    </div>
+
     <!-- Panneau Thèmes -->
-    <div id="themePanel" class="fixed bottom-0 left-0 w-full bg-surface-container-low/90 backdrop-blur-xl border-t border-outline-variant/20 transform translate-y-full transition-transform duration-500 z-50">
+    <div id="themePanel"
+        class="fixed bottom-0 left-0 w-full bg-surface-container-low/90 backdrop-blur-xl border-t border-outline-variant/20 transform translate-y-full transition-transform duration-500 z-50">
         <div class="flex items-center justify-between px-8 py-4 border-b border-outline-variant/20">
-            <span class="text-xs font-headline tracking-widest uppercase text-on-surface-variant">Choisis ton background</span>
-            <button id="closePanel" class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-primary/10 border border-outline-variant/20 hover:border-primary/40 group">
+            <span class="text-xs font-headline tracking-widest uppercase text-on-surface-variant">Choisis ton
+                background</span>
+            <button id="closePanel"
+                class="w-8 h-8 flex items-center justify-center rounded-full bg-surface-container hover:bg-primary/10 border border-outline-variant/20 hover:border-primary/40 group">
                 <i class="fas fa-times text-on-surface-variant group-hover:text-primary"></i>
             </button>
         </div>
         <div class="h-48 flex items-center px-8 overflow-x-auto gap-4 pb-4">
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0" data-bg="none">
-                <div class="w-full h-full flex items-center justify-center" style="background:linear-gradient(135deg,#121c17 0%,#0a0f0d 100%)"><svg class="w-10 h-10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1Z"/></svg></div>
-                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span class="text-[9px] font-headline uppercase text-white tracking-wider">Aucun</span></div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="none">
+                <div class="w-full h-full flex items-center justify-center"
+                    style="background:linear-gradient(135deg,#121c17 0%,#0a0f0d 100%)"><svg class="w-10 h-10"
+                        viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-2.98 0-5.4-2.42-5.4-5.4 0-1.81.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1Z" />
+                    </svg></div>
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Aucun</span></div>
             </div>
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0" data-bg="assets/backgrounds/chutes-Lobé.jpg">
-                <img src="assets/backgrounds/chutes-Lobé.jpg" alt="Chutes Lobé" class="w-full h-full object-cover">
-                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span class="text-[9px] font-headline uppercase text-white tracking-wider">Chutes Lobé</span></div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/adamaoua-ruche.JPG">
+                <img src="assets/backgrounds/adamaoua-ruche.JPG" alt="Adamaoua" class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Adamaoua</span></div>
             </div>
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0" data-bg="assets/backgrounds/Chuttes ekom-nkam.jpg">
-                <img src="assets/backgrounds/Chuttes ekom-nkam.jpg" alt="Chutes Ekom-Nkam" class="w-full h-full object-cover">
-                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span class="text-[9px] font-headline uppercase text-white tracking-wider">Chutes Ekom-Nkam</span></div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/Bimbia - cailloux et plage.JPG">
+                <img src="assets/backgrounds/Bimbia - cailloux et plage.JPG" alt="Bimbia"
+                    class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Bimbia</span></div>
             </div>
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0" data-bg="assets/backgrounds/Mont-Cameroun.png">
-                <img src="assets/backgrounds/Mont-Cameroun.png" alt="Mont Cameroun" class="w-full h-full object-cover">
-                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span class="text-[9px] font-headline uppercase text-white tracking-wider">Mont Cameroun</span></div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/campements-pygmes.JPG">
+                <img src="assets/backgrounds/campements-pygmes.JPG" alt="Campements Pygmés"
+                    class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Campements Pygmés</span>
+                </div>
             </div>
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0" data-bg="assets/backgrounds/Monts Mandara.png">
-                <img src="assets/backgrounds/Monts Mandara.png" alt="Monts Mandara" class="w-full h-full object-cover">
-                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span class="text-[9px] font-headline uppercase text-white tracking-wider">Monts Mandara</span></div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/chutes de la Lobé.JPG">
+                <img src="assets/backgrounds/chutes de la Lobé.JPG" alt="Chutes Lobé"
+                    class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Chutes Lobé</span></div>
             </div>
-            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0" data-bg="assets/backgrounds/Parc de la Mefou.png">
-                <img src="assets/backgrounds/Parc de la Mefou.png" alt="Parc de la Mefou" class="w-full h-full object-cover">
-                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity"></div>
-                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span class="text-[9px] font-headline uppercase text-white tracking-wider">Parc de la Mefou</span></div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/danseurs-ouest.JPG">
+                <img src="assets/backgrounds/danseurs-ouest.JPG" alt="Danseurs Ouest"
+                    class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Danseurs Ouest</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/église dans le nord-ouest bamenda.JPG">
+                <img src="assets/backgrounds/église dans le nord-ouest bamenda.JPG" alt="Bamenda"
+                    class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Bamenda</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/Festival de la Culture Massa.jpg">
+                <img src="assets/backgrounds/Festival de la Culture Massa.jpg" alt="Festival Massa"
+                    class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Festival Massa</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/Festival des arts et de la Culture Massa.JPG">
+                <img src="assets/backgrounds/Festival des arts et de la Culture Massa.JPG" alt="Arts Massa"
+                    class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Arts Massa</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/Gorges de kola - nord du cameroun.JPG">
+                <img src="assets/backgrounds/Gorges de kola - nord du cameroun.JPG" alt="Gorges de Kola"
+                    class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Gorges de Kola</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/Lagon bleu - garoua.JPG">
+                <img src="assets/backgrounds/Lagon bleu - garoua.JPG" alt="Lagon Bleu"
+                    class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Lagon Bleu</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/Lion - garoua.JPG">
+                <img src="assets/backgrounds/Lion - garoua.JPG" alt="Lion Garoua" class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Lion Garoua</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/Mont cameroun , vu de Douala-Deido plage.jpg">
+                <img src="assets/backgrounds/Mont cameroun , vu de Douala-Deido plage.jpg" alt="Mont Cameroun"
+                    class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Mont Cameroun</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/New bell city paint.JPG">
+                <img src="assets/backgrounds/New bell city paint.JPG" alt="New Bell City"
+                    class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">New Bell City</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/ngouon- chapeau.jpg">
+                <img src="assets/backgrounds/ngouon- chapeau.jpg" alt="Ngouon" class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Ngouon</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/Parade de piroguiers sur le fleuve Wouri pendant le Ngondo (Fete Traditionnelle).JPG">
+                <img src="assets/backgrounds/Parade de piroguiers sur le fleuve Wouri pendant le Ngondo (Fete Traditionnelle).JPG"
+                    alt="Ngondo" class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Ngondo</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/Plage de Kribi.JPG">
+                <img src="assets/backgrounds/Plage de Kribi.JPG" alt="Kribi" class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Kribi</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/pont-edea.JPG">
+                <img src="assets/backgrounds/pont-edea.JPG" alt="Pont d'Edéa" class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Pont d'Edéa</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/Port de Douala-cimencam.JPG">
+                <img src="assets/backgrounds/Port de Douala-cimencam.JPG" alt="Port Douala"
+                    class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Port Douala</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/Singe sur arbre coupé.jpg">
+                <img src="assets/backgrounds/Singe sur arbre coupé.jpg" alt="Singe" class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Singe</span></div>
+            </div>
+            <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
+                data-bg="assets/backgrounds/ville-yaounde.png">
+                <img src="assets/backgrounds/ville-yaounde.png" alt="Yaoundé" class="w-full h-full object-cover">
+                <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
+                        class="text-[9px] font-headline uppercase text-white tracking-wider">Yaoundé</span></div>
             </div>
         </div>
     </div>
- 
+
     <!-- Modal Raccourci -->
-    <div id="shortcutModal" class="hidden fixed inset-0 z-[100] items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div class="bg-surface-container-low border border-outline-variant/20 rounded-2xl p-8 w-full max-w-sm mx-4 shadow-[0_32px_64px_rgba(0,16,8,0.5)]">
+    <div id="shortcutModal"
+        class="hidden fixed inset-0 z-[100] items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div
+            class="bg-surface-container-low border border-outline-variant/20 rounded-2xl p-8 w-full max-w-sm mx-4 shadow-[0_32px_64px_rgba(0,16,8,0.5)]">
             <div class="flex items-center justify-between mb-6">
-                <h2 id="scModalTitle" class="text-sm font-headline tracking-widest uppercase text-on-surface">Nouveau Raccourci</h2>
-                <button id="shortcutClose" class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 border border-outline-variant/20"><i class="fas fa-times text-xs"></i></button>
+                <h2 id="scModalTitle" class="text-sm font-headline tracking-widest uppercase text-on-surface">Nouveau
+                    Raccourci</h2>
+                <button id="shortcutClose"
+                    class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-primary/10 border border-outline-variant/20"><i
+                        class="fas fa-times text-xs"></i></button>
             </div>
             <div class="flex flex-col gap-4">
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[10px] font-headline tracking-widest uppercase text-on-surface-variant">Nom</label>
-                    <input id="shortcutName" type="text" placeholder="Ex: Douanes Cameroun" class="w-full bg-surface-container rounded-xl px-4 py-3 text-sm font-body text-on-surface placeholder-on-surface-variant/40 border border-outline-variant/20 focus:border-primary/50 focus:outline-none">
+                    <label
+                        class="text-[10px] font-headline tracking-widest uppercase text-on-surface-variant">Nom</label>
+                    <input id="shortcutName" type="text" placeholder="Ex: Douanes Cameroun"
+                        class="w-full bg-surface-container rounded-xl px-4 py-3 text-sm font-body text-on-surface placeholder-on-surface-variant/40 border border-outline-variant/20 focus:border-primary/50 focus:outline-none">
                 </div>
                 <div class="flex flex-col gap-1.5">
-                    <label class="text-[10px] font-headline tracking-widest uppercase text-on-surface-variant">URL</label>
-                    <input id="shortcutUrl" type="text" placeholder="Ex: douanes.gov.cm" class="w-full bg-surface-container rounded-xl px-4 py-3 text-sm font-body text-on-surface placeholder-on-surface-variant/40 border border-outline-variant/20 focus:border-primary/50 focus:outline-none">
+                    <label
+                        class="text-[10px] font-headline tracking-widest uppercase text-on-surface-variant">URL</label>
+                    <input id="shortcutUrl" type="text" placeholder="Ex: douanes.gov.cm"
+                        class="w-full bg-surface-container rounded-xl px-4 py-3 text-sm font-body text-on-surface placeholder-on-surface-variant/40 border border-outline-variant/20 focus:border-primary/50 focus:outline-none">
                 </div>
-                <button id="shortcutConfirm" class="mt-2 w-full py-3 rounded-xl bg-primary text-[#0a0f0d] text-xs font-headline tracking-widest uppercase hover:bg-primary-light font-semibold" style="transition:background-color .2s">Ajouter</button>
+                <button id="shortcutConfirm"
+                    class="mt-2 w-full py-3 rounded-xl bg-primary text-[#0a0f0d] text-xs font-headline tracking-widest uppercase hover:bg-primary-light font-semibold"
+                    style="transition:background-color .2s">Ajouter</button>
             </div>
         </div>
     </div>
- 
+
     <!-- Arrière-plan -->
     <div class="fixed inset-0 pointer-events-none -z-10">
-        <div id="solidBg" class="absolute inset-0 opacity-0 transition-opacity duration-500" style="background:linear-gradient(135deg,#0a0f0d 0%,#121c17 100%)">
+        <div id="solidBg" class="absolute inset-0 opacity-0 transition-opacity duration-500"
+            style="background:linear-gradient(135deg,#0a0f0d 0%,#121c17 100%)">
             <div class="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/25 rounded-full blur-[150px]"></div>
         </div>
-        <img id="bgImage" alt="Thème" class="bg-image absolute inset-0 w-full h-full object-cover opacity-100" src="">
+        <img id="bgImage" alt="Thème" class="bg-image absolute inset-0 w-full h-full object-cover opacity-0" src="">
     </div>
- 
+
+    <!-- Info background en bas à gauche -->
+    <div id="bg-info">
+        <p id="bg-info-title"></p>
+        <p id="bg-info-desc"></p>
+        <p id="bg-copyright">© Nicolas EYIDI</p>
+    </div>
+
 </body>
+
 </html>
