@@ -859,16 +859,29 @@
             border-radius: 10px;
             max-width: 240px;
             opacity: 0;
-            transform: translateY(8px) scale(1);
-            transition: opacity .4s ease, transform .4s ease;
+            transform: translateY(0) scale(1);
+            transform-origin: bottom left;
+            transition: opacity .4s ease, transform .35s ease, background .35s ease, border-color .35s ease;
             pointer-events: none;
             cursor: default;
         }
 
         #bg-info:hover {
-            transform: translateY(0) scale(1.06);
-            background: rgba(13, 20, 17, .6);
-            border-color: rgba(45, 74, 61, .35);
+            transform: translateY(0) scale(1.12);
+            background: rgba(13, 20, 17, .65);
+            border-color: rgba(45, 74, 61, .4);
+        }
+
+        #bg-info:hover #bg-info-title {
+            font-size: 10.5px;
+        }
+
+        #bg-info:hover #bg-info-desc {
+            font-size: 10px;
+        }
+
+        #bg-info:hover #bg-copyright {
+            font-size: 9.5px;
         }
 
         #bg-info-title {
