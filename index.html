@@ -639,42 +639,36 @@
                 vp.addEventListener('pointerdown', e => {
                     isDrag = true; didDrag = false; isAuto = false;
                     dragSX = e.clientX; dragSPos = pos;
-                    vp.setPointerCapture(e.pointerId);
                     track.style.transition = 'none';
                 });
                 vp.addEventListener('pointermove', e => {
                     if (!isDrag) return;
                     const dx = e.clientX - dragSX;
                     if (Math.abs(dx) > 15) didDrag = true;
-                    pos = dragSPos + dx;
-                    reflow();
-                    track.style.transform = `translateX(${pos}px)`;
+                    if (didDrag) {
+                        pos = dragSPos + dx;
+                        reflow();
+                        track.style.transform = `translateX(${pos}px)`;
+                    }
                 });
                 vp.addEventListener('pointerup', e => {
-                    if (!isDrag) return;
                     isDrag = false;
-                    const dx = e.clientX - dragSX;
-                    if (Math.abs(dx) > 40) pos = dragSPos - Math.sign(-dx) * itemW;
-                    reflow();
-                    track.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
-                    track.style.transform = `translateX(${pos}px)`;
-                    setTimeout(() => { track.style.transition = ''; isAuto = true; }, 400);
-                    didDrag = false; /* reset after transition so click can pass */
+                    if (didDrag) {
+                        const dx = e.clientX - dragSX;
+                        pos = dragSPos - Math.sign(-dx) * itemW;
+                        reflow();
+                        track.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
+                        track.style.transform = `translateX(${pos}px)`;
+                        setTimeout(() => { track.style.transition = ''; isAuto = true; }, 400);
+                        didDrag = false;
+                    } else {
+                        isAuto = true;
+                    }
                 });
                 vp.addEventListener('pointercancel', () => {
                     isDrag = false; didDrag = false; isAuto = true;
                     reflow();
                 });
-
-                /* Bloquer les clics sur les items après un drag */
-                track.querySelectorAll('.carousel-item').forEach(item => {
-                    item.addEventListener('click', e => {
-                        if (didDrag) { e.preventDefault(); }
-                    });
-                });
-
-                vp.addEventListener('mouseenter', () => { isAuto = false; });
-                vp.addEventListener('mouseleave', () => { isAuto = true; });
 
                 window.addEventListener('resize', () => {
                     clearTimeout(window._carouselResizeTimer);
