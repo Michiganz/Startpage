@@ -670,6 +670,9 @@
                     reflow();
                 });
 
+                vp.addEventListener('mouseenter', () => { isAuto = false; });
+                vp.addEventListener('mouseleave', () => { isAuto = true; });
+
                 window.addEventListener('resize', () => {
                     clearTimeout(window._carouselResizeTimer);
                     window._carouselResizeTimer = setTimeout(init, 150);
