@@ -659,6 +659,7 @@
                     track.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
                     track.style.transform = `translateX(${pos}px)`;
                     setTimeout(() => { track.style.transition = ''; isAuto = true; }, 400);
+                    didDrag = false; /* reset after transition so click can pass */
                 });
                 vp.addEventListener('pointercancel', () => {
                     isDrag = false; didDrag = false; isAuto = true;
