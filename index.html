@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="dark" lang="en">
+<html class="dark" lang="fr">
 
 <head>
     <meta charset="utf-8">
@@ -64,9 +64,9 @@
         let userLocation = { ...DEFAULT_LOCATION };
 
         /*: durées de cache */
-        const WEATHER_CACHE_MS = 2 * 60 * 1000;   // 2 minutes
+        const WEATHER_CACHE_MS = 5 * 60 * 1000;   // 5 min (> refresh 3 min → sert au premier paint)
         const LOCATION_CACHE_MS = 24 * 60 * 60 * 1000; // 24 h (nom de ville)
-        const GEO_CACHE_MS = 2 * 60 * 1000;   // 2 min (coordonnées GPS)
+        const GEO_CACHE_MS = 30 * 60 * 1000;  // 30 min (coordonnées GPS)
 
         /* ─── Cache coordonnées ─────────────────────────────────────────── */
         function loadCachedLocation() {
@@ -74,7 +74,7 @@
                 const c = localStorage.getItem('pyramid_location');
                 if (!c) return false;
                 const { lat, lon, timestamp } = JSON.parse(c);
-                /*  expiration 5 min pour les coords */
+                /*  expiration 30 min pour les coords */
                 if (Date.now() - timestamp < GEO_CACHE_MS) {
                     userLocation = { ...DEFAULT_LOCATION, lat, lon };
                     return true;
@@ -86,7 +86,7 @@
             localStorage.setItem('pyramid_location', JSON.stringify({ lat, lon, timestamp: Date.now() }));
         }
 
-        /* ─── Géolocalisation : options haute précision + timeout court ── */
+        /* ─── Géolocalisation : basse précision suffisante pour la météo ── */
         function getUserLocation() {
             return new Promise((resolve) => {
                 if (!navigator.geolocation) { resolve(DEFAULT_LOCATION); return; }
@@ -97,7 +97,7 @@
                         resolve(userLocation);
                     },
                     () => resolve(userLocation), // garde les coords actuelles en cas d'échec
-                    { enableHighAccuracy: true, timeout: 8000, maximumAge: GEO_CACHE_MS }
+                    { enableHighAccuracy: false, timeout: 8000, maximumAge: GEO_CACHE_MS }
                 );
             });
         }
@@ -113,8 +113,7 @@
             } catch { }
             try {
                 const res = await fetch(
-                    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=fr`,
-                    { headers: { 'User-Agent': 'PyramidNewTab/1.0' } }
+                    `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=fr`
                 );
                 const data = await res.json();
                 const a = data.address || {};
@@ -188,57 +187,56 @@
         }
 
         /* ─── Applique les données météo au widget ──────────────────────── */
-        function applyWeather(temp, feel, hum, wind, code) {
+        function applyWeather(temp, feel, code) {
             const wmo = getWMO(code);
             document.getElementById('temperature').textContent = `${Math.round(temp)}°C`;
             const iconEl = document.getElementById('weather-icon');
             if (iconEl) iconEl.innerHTML = `<i class="fas ${wmo.icon}" style="color:#ffffff"></i>`;
             const descEl = document.getElementById('weather-desc');
-            if (descEl) descEl.textContent = wmo.desc;
+            if (descEl) descEl.textContent = `${wmo.desc} · ressenti ${Math.round(feel)}°`;
         }
 
-        /* ─── Cache météo: 3 min ────────────────────────────── */
+        /* ─── Cache météo: 5 min ────────────────────────────── */
         function loadCachedWeather() {
             try {
                 const c = localStorage.getItem('pyramid_weather');
                 if (!c) return false;
-                const { temp, feel, hum, wind, code, timestamp } = JSON.parse(c);
+                const { temp, feel, code, timestamp } = JSON.parse(c);
                 if (Date.now() - timestamp < WEATHER_CACHE_MS) {
-                    applyWeather(temp, feel ?? temp, hum ?? 0, wind ?? 0, code ?? 0);
+                    applyWeather(temp, feel ?? temp, code ?? 0);
                     return true;
                 }
                 return false;
             } catch { return false; }
         }
 
-        /* ─── Fetch météo Open-Meteo : relance la géoloc avant chaque appel ── */
+        /* ─── Fetch météo Open-Meteo : géoloc uniquement si le cache coords a expiré ── */
         async function fetchWeather() {
             /* Affiche immédiatement le cache pendant que la fraîche arrive */
             loadCachedWeather();
 
-            /* on re-demande la position GPS à chaque cycle */
-            try {
-                const freshLoc = await getUserLocation();
-                userLocation = freshLoc;
-            } catch { /* garde userLocation courante */ }
+            /* coords en cache encore valides → pas de nouvel appel géoloc */
+            if (!loadCachedLocation()) {
+                try {
+                    userLocation = await getUserLocation();
+                } catch { /* garde userLocation courante */ }
+            }
 
             try {
                 const res = await fetch(
                     `https://api.open-meteo.com/v1/forecast` +
                     `?latitude=${userLocation.lat}&longitude=${userLocation.lon}` +
-                    `&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,weather_code` +
-                    `&wind_speed_unit=kmh&timezone=auto`
+                    `&current=temperature_2m,apparent_temperature,weather_code` +
+                    `&timezone=auto`
                 );
                 const data = await res.json();
                 const c = data.current;
                 const temp = c.temperature_2m;
                 const feel = c.apparent_temperature;
-                const hum = c.relative_humidity_2m;
-                const wind = c.wind_speed_10m;
                 const code = c.weather_code;
-                applyWeather(temp, feel, hum, wind, code);
+                applyWeather(temp, feel, code);
                 localStorage.setItem('pyramid_weather', JSON.stringify({
-                    temp, feel, hum, wind, code, timestamp: Date.now()
+                    temp, feel, code, timestamp: Date.now()
                 }));
 
                 /*  met à jour le nom de ville en parallèle */
@@ -269,75 +267,75 @@
 
             /* ── Informations sur chaque background ──────────────────────── */
             const BG_INFO = {
-                "assets/backgrounds/adamaoua-ruche.jpg": {
+                "assets/backgrounds/adamaoua-ruche.webp": {
                     title: 'Adamaoua',
                     desc: 'Ruche d\'activité dans le plateau de l\'Adamaoua, au cœur du Cameroun.'
                 },
-                "assets/backgrounds/Bimbia - cailloux et plage.JPG": {
+                "assets/backgrounds/bimbia-plage.webp": {
                     title: 'Bimbia',
                     desc: 'Plage de Bimbia, lieu de mémoire historique près de Limbé-Cameroun.'
                 },
-                "assets/backgrounds/campements-pygmes.jpg": {
+                "assets/backgrounds/campements-pygmes.webp": {
                     title: 'Campements Pygmés',
                     desc: 'Campements traditionnels des peuples Pygmés dans la forêt de l\'Est Cameroun.'
                 },
-                "assets/backgrounds/église-dans-le-nord-ouest-bamenda.jpg": {
+                "assets/backgrounds/eglise-bamenda.webp": {
                     title: 'Bamenda',
                     desc: 'Une église EPC dans les hauts plateaux de Bamenda, Nord-Ouest.'
                 },
-                "assets/backgrounds/Festival-de-la-Culture-Massa.jpg": {
+                "assets/backgrounds/festival-massa.webp": {
                     title: 'Festival Massa',
                     desc: 'Célébration vibrante de la culture et des traditions du peuple Massa, Garoua Nord-Cameroun .'
                 },
-                "assets/backgrounds/Festival-des-arts-et-de-la-Culture-Massa.jpg": {
+                "assets/backgrounds/arts-massa.webp": {
                     title: 'Peuple Massa',
                     desc: 'Le festival des arts et de la culture, un patrimoine vivant du peuple Massa, Garoua Nord-Cameroun.'
                 },
-                "assets/backgrounds/Gorges de kola - nord du cameroun.JPG": {
+                "assets/backgrounds/gorges-de-kola.webp": {
                     title: 'Gorges de Kola',
                     desc: 'Les impressionnantes gorges de Kola dans le nord du Cameroun.'
                 },
-                "assets/backgrounds/Lagon-bleu garoua.jpg": {
+                "assets/backgrounds/lagon-bleu-garoua.webp": {
                     title: 'Lagon Bleu',
                     desc: 'Le lagon bleu de Garoua, un joyau naturel aux eaux turquoise.'
                 },
-                "assets/backgrounds/Lion - garoua.JPG": {
+                "assets/backgrounds/lion-garoua.webp": {
                     title: 'Lion de Garoua',
                     desc: 'Le roi de la savane dans le Parc Zoologique de Garoua, Nord-Cameroun.'
                 },
-                "assets/backgrounds/Mont cameroun , vu de Douala-Deido plage.jpg": {
+                "assets/backgrounds/mont-cameroun-deido.webp": {
                     title: 'Mont Cameroun',
                     desc: 'Le Mont Cameroun, toit de l\'Afrique centrale, vu depuis Deido plage; Douala-Cameroun.'
                 },
-                "assets/backgrounds/New-bell-city-paint.jpg": {
+                "assets/backgrounds/new-bell-city.webp": {
                     title: 'New Bell City',
                     desc: 'Peinture futuriste du quartier New Bell à Douala.'
                 },
-                "assets/backgrounds/ngouon- chapeau.jpg": {
+                "assets/backgrounds/ngouon-chapeau.webp": {
                     title: 'Ngouon',
                     desc: 'Jeune Festivalier au Ngouon, fete traditionnelle Bamoun à Foumban Ouest-Cameroun.'
                 },
-                "assets/backgrounds/Parade-de-piroguiers-sur-le-fleuve-Wouri-pendant-le-Ngondo-(Fete-Traditionnelle).jpg": {
+                "assets/backgrounds/ngondo-piroguiers.webp": {
                     title: 'Ngondo',
                     desc: 'La parade des piroguiers sur le fleuve Wouri pendant la fête traditionnelle du Ngondo; Douala-Cameroun.'
                 },
-                "assets/backgrounds/Plage de Kribi.JPG": {
+                "assets/backgrounds/plage-kribi.webp": {
                     title: 'Kribi',
                     desc: 'La magnifique plage de Kribi, perle côtière du Cameroun.'
                 },
-                "assets/backgrounds/pont-edea.jpg": {
+                "assets/backgrounds/pont-edea.webp": {
                     title: 'Pont d\'Edéa',
                     desc: 'Le pont d\'Edéa, reliant les rives de la Sanaga.'
                 },
-                "assets/backgrounds/Port de Douala-cimencam.JPG": {
+                "assets/backgrounds/port-douala.webp": {
                     title: 'Port de Douala',
                     desc: 'Le Port Autonome de Douala, poumon économique du Cameroun.'
                 },
-                "assets/backgrounds/Singe-sur-arbre-coupé.jpg": {
+                "assets/backgrounds/singe-garoua.webp": {
                     title: 'Faune camerounaise',
                     desc: 'Un singe perché sur un arbre coupé, témoin de la biodiversité locale; Parc Zoologique de Garoua.'
                 },
-                "assets/backgrounds/ville-yaounde.jpg": {
+                "assets/backgrounds/ville-yaounde.webp": {
                     title: 'Yaoundé',
                     desc: 'La ville de Yaoundé, capitale politique du Cameroun.'
                 }
@@ -447,10 +445,40 @@
                 if (e.key === 'Escape' && isPreview) previewBtn.click();
             });
 
-            const savedTheme = localStorage.getItem('selectedTheme');
+            const savedTheme = (function migrateTheme() {
+                /* Migration : anciens chemins .jpg/.JPG → nouveaux .webp */
+                const OLD_TO_NEW = {
+                    'adamaoua-ruche.jpg': 'adamaoua-ruche.webp',
+                    'Bimbia - cailloux et plage.JPG': 'bimbia-plage.webp',
+                    'campements-pygmes.jpg': 'campements-pygmes.webp',
+                    'église-dans-le-nord-ouest-bamenda.jpg': 'eglise-bamenda.webp',
+                    'Festival-de-la-Culture-Massa.jpg': 'festival-massa.webp',
+                    'Festival-des-arts-et-de-la-Culture-Massa.jpg': 'arts-massa.webp',
+                    'Gorges de kola - nord du cameroun.JPG': 'gorges-de-kola.webp',
+                    'Lagon-bleu garoua.jpg': 'lagon-bleu-garoua.webp',
+                    'Lion - garoua.JPG': 'lion-garoua.webp',
+                    'Mont cameroun , vu de Douala-Deido plage.jpg': 'mont-cameroun-deido.webp',
+                    'New-bell-city-paint.jpg': 'new-bell-city.webp',
+                    'ngouon- chapeau.jpg': 'ngouon-chapeau.webp',
+                    'Parade-de-piroguiers-sur-le-fleuve-Wouri-pendant-le-Ngondo-(Fete-Traditionnelle).jpg': 'ngondo-piroguiers.webp',
+                    'Plage de Kribi.JPG': 'plage-kribi.webp',
+                    'pont-edea.jpg': 'pont-edea.webp',
+                    'Port de Douala-cimencam.JPG': 'port-douala.webp',
+                    'Singe-sur-arbre-coupé.jpg': 'singe-garoua.webp',
+                    'ville-yaounde.jpg': 'ville-yaounde.webp'
+                };
+                let t = localStorage.getItem('selectedTheme');
+                if (t && t !== 'none' && /\.jpe?g$/i.test(t)) {
+                    const file = t.replace('assets/backgrounds/', '');
+                    t = OLD_TO_NEW[file] ? 'assets/backgrounds/' + OLD_TO_NEW[file] : null;
+                    if (t) localStorage.setItem('selectedTheme', t);
+                    else localStorage.removeItem('selectedTheme'); /* inconnu → retour au défaut */
+                }
+                return t;
+            })();
             const solidBg = document.getElementById('solidBg');
 
-            const DEFAULT_BG = 'assets/backgrounds/Lagon-bleu garoua.jpg';
+            const DEFAULT_BG = 'assets/backgrounds/lagon-bleu-garoua.webp';
 
             if (!savedTheme) {
                 /* Premier lancement → Lagon Bleu par défaut */
@@ -498,11 +526,8 @@
                     if (c) { const { city, country } = JSON.parse(c); updateLocationDisplay(city, country); }
                 } catch { }
 
-                /*  charge coords en cache si dispo, sinon valeurs par défaut,
-                   puis lance fetchWeather() qui redemandera la géoloc en interne */
-                loadCachedLocation();
-
-                /* Premier appel immédiat — fetchWeather() ira chercher la géoloc lui-même */
+                /* Premier appel immédiat — fetchWeather() utilise le cache coords,
+                   et ne redemande la géoloc que s'il a expiré (30 min) */
                 fetchWeather();
             })();
 
@@ -682,8 +707,8 @@
             function doSearch() {
                 const q = searchInput.value.trim(); if (!q) return;
                 const isURL = /^(https?:\/\/|www\.)\S+/.test(q);
-                window.open(isURL ? (q.startsWith('http') ? q : 'https://' + q) : `https://www.google.com/search?q=${encodeURIComponent(q)}`, '_blank');
-                searchInput.value = '';
+                /* navigation dans l'onglet courant — comportement standard d'une page nouvel-onglet */
+                window.location.href = isURL ? (q.startsWith('http') ? q : 'https://' + q) : `https://www.google.com/search?q=${encodeURIComponent(q)}`;
             }
             searchInput.addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
             searchBtn.addEventListener('click', doSearch);
@@ -715,9 +740,12 @@
                         </button>
                         <div class="w-7 h-7 rounded-lg bg-surface-container flex items-center justify-center overflow-hidden">
                             <img src="${fav}" class="w-5 h-5 object-contain" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-                            <span style="display:none" class="w-full h-full items-center justify-center text-primary text-sm font-headline">${sc.name.charAt(0).toUpperCase()}</span>
+                            <span style="display:none" class="sc-initial w-full h-full items-center justify-center text-primary text-sm font-headline"></span>
                         </div>
-                        <span class="text-[8px] font-label tracking-wide text-on-surface-variant group-hover:text-primary text-center leading-tight truncate w-full">${sc.name}</span>`;
+                        <span class="sc-label text-[8px] font-label tracking-wide text-on-surface-variant group-hover:text-primary text-center leading-tight truncate w-full"></span>`;
+                    /* nom injecté via textContent — jamais via innerHTML (anti-XSS) */
+                    a.querySelector('.sc-initial').textContent = sc.name.charAt(0).toUpperCase();
+                    a.querySelector('.sc-label').textContent = sc.name;
                     siteGrid.insertBefore(a, addShortcutBtn);
                 });
                 refreshAddBtn();
@@ -752,28 +780,26 @@
             function closeSCMenuHandler(e) { const m = document.getElementById('scMenu'); if (m && !m.contains(e.target)) closeSCMenu(); }
             function closeSCMenu() { document.getElementById('scMenu')?.remove(); document.removeEventListener('click', closeSCMenuHandler); ctxMenuIdx = null; }
 
+            /* index du raccourci en cours d'édition — null = mode ajout */
+            let editIndex = null;
+
             function editSC(index) {
-                const a = loadSC(), sc = a[index]; if (!sc) return;
+                const sc = loadSC()[index]; if (!sc) return;
+                editIndex = index;
                 shortcutName.value = sc.name; shortcutUrl.value = sc.url.replace(/^https?:\/\//, '');
                 document.getElementById('scModalTitle').textContent = 'Modifier le Raccourci';
                 shortcutConfirm.textContent = 'Enregistrer';
-                const orig = shortcutConfirm.onclick;
-                shortcutConfirm.onclick = () => {
-                    const name = shortcutName.value.trim(); let url = shortcutUrl.value.trim();
-                    if (!name || !url) return;
-                    if (!/^https?:\/\//.test(url)) url = 'https://' + url;
-                    a[index] = { name, url }; saveSC(a); renderShortcuts(); closeModal(); shortcutConfirm.onclick = orig;
-                };
                 shortcutModal.classList.remove('hidden'); shortcutModal.classList.add('flex'); shortcutName.focus();
             }
 
             addBtn.addEventListener('click', () => {
-                if (loadSC().length >= MAX_SC) { alert('Maximum de 7 raccourcis atteint.'); return; }
+                if (loadSC().length >= MAX_SC) return;
                 shortcutModal.classList.remove('hidden'); shortcutModal.classList.add('flex'); shortcutName.focus();
             });
             function closeModal() {
                 shortcutModal.classList.add('hidden'); shortcutModal.classList.remove('flex');
                 shortcutName.value = ''; shortcutUrl.value = '';
+                editIndex = null;
                 document.getElementById('scModalTitle').textContent = 'Nouveau Raccourci'; shortcutConfirm.textContent = 'Ajouter';
             }
             shortcutClose.addEventListener('click', closeModal);
@@ -782,7 +808,10 @@
                 const name = shortcutName.value.trim(); let url = shortcutUrl.value.trim();
                 if (!name || !url) return;
                 if (!/^https?:\/\//.test(url)) url = 'https://' + url;
-                const a = loadSC(); a.push({ name, url }); saveSC(a); renderShortcuts(); closeModal();
+                const a = loadSC();
+                if (editIndex !== null) { a[editIndex] = { name, url }; }
+                else { a.push({ name, url }); }
+                saveSC(a); renderShortcuts(); closeModal();
             });
             [shortcutName, shortcutUrl].forEach(el => el.addEventListener('keydown', e => { if (e.key === 'Enter') shortcutConfirm.click(); }));
             renderShortcuts();
@@ -834,6 +863,7 @@
 
         .glass-widget {
             background: rgba(13, 20, 17, .4);
+            -webkit-backdrop-filter: blur(12px);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(45, 74, 61, .2);
         }
@@ -846,6 +876,7 @@
             z-index: 30;
             padding: 6px 10px;
             background: rgba(13, 20, 17, .45);
+            -webkit-backdrop-filter: blur(10px);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(45, 74, 61, .18);
             border-radius: 10px;
@@ -1135,6 +1166,7 @@
             background: rgba(15, 23, 19, .75);
             border: 1px solid rgba(45, 74, 61, .35);
             color: #a8c4b8;
+            -webkit-backdrop-filter: blur(8px);
             backdrop-filter: blur(8px);
             z-index: 10;
             cursor: pointer;
@@ -1162,6 +1194,7 @@
 
         .glass-button {
             background: rgba(15, 23, 19, .5);
+            -webkit-backdrop-filter: blur(16px);
             backdrop-filter: blur(16px);
             border: 1px solid rgba(45, 74, 61, .25);
         }
@@ -1438,7 +1471,7 @@
                     <a href="https://st.digital/cameroun" target="_blank" rel="noopener"
                         class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
                         title="ST Digital"><img src="https://www.google.com/s2/favicons?sz=128&domain=st.digital"
-                            onerror="this.src='assets/logo/ST Digital.png';this.onerror=null;"
+                            onerror="this.style.display='none';this.onerror=null;"
                             class="w-full h-full object-contain" alt="ST Digital"></a>
                     <a href="https://www.adwapay.com/" target="_blank" rel="noopener"
                         class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
@@ -1458,8 +1491,18 @@
                       <a href="https://taramoney.com/" target="_blank" rel="noopener"
                         class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
                         title="Tara Money"><img src="https://www.google.com/s2/favicons?sz=128&domain=taramoney.com"
-                            onerror="this.src='assets/logo/taramoney.png';this.onerror=null;"
+                            onerror="this.src='assets/logo/tara.png';this.onerror=null;"
                             class="w-full h-full object-contain" alt="Tara Money"></a>
+                       <a href="https://vkii.org/" target="_blank" rel="noopener"
+                        class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                        title="VKII"><img src="https://www.google.com/s2/favicons?sz=128&domain=vkii.org"
+                            onerror="this.style.display='none';this.onerror=null;"
+                            class="w-full h-full object-contain" alt="VKII"></a>
+                        <a href="https://www.fanelit.cm/" target="_blank" rel="noopener"
+                        class="partner-item w-11 h-11 md:w-12 md:h-12 rounded-xl bg-white border border-outline-variant/20 hover:border-primary/60 hover:shadow-primary-glow card-hover no-underline flex items-center justify-center p-1 overflow-hidden"
+                        title="Fanelit"><img src="https://www.google.com/s2/favicons?sz=128&domain=fanelit.cm"
+                            onerror="this.style.display='none';this.onerror=null;"
+                            class="w-full h-full object-contain" alt="Fanelit"></a>         
                 </div>
             </section>
 
@@ -1491,11 +1534,11 @@
 
     <!-- Bouton Personnaliser -->
     <div class="fixed bottom-5 right-5 z-40">
-        <button id="customBtn"
-            class="flex items-center gap-2 px-4 py-2.5 bg-surface-bright rounded-xl border border-outline-variant/15 hover:border-primary/40 hover:shadow-primary-glow glass-button group">
+        <button id="customBtn" title="Personnaliser"
+            class="flex items-center justify-center sm:gap-2 px-3 sm:px-4 py-2.5 bg-surface-bright rounded-xl border border-outline-variant/15 hover:border-primary/40 hover:shadow-primary-glow glass-button group">
             <i class="fas fa-wand-magic-sparkles text-primary text-sm"></i>
             <span
-                class="text-[10px] font-headline tracking-[.2em] uppercase text-on-surface-variant group-hover:text-primary">Personnaliser</span>
+                class="hidden sm:inline text-[10px] font-headline tracking-[.2em] uppercase text-on-surface-variant group-hover:text-primary">Personnaliser</span>
         </button>
     </div>
 
@@ -1525,16 +1568,16 @@
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Aucun</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/adamaoua-ruche.jpg">
-                <img src="assets/backgrounds/adamaoua-ruche.jpg" alt="Adamaoua" class="w-full h-full object-cover">
+                data-bg="assets/backgrounds/adamaoua-ruche.webp">
+                <img src="assets/backgrounds/adamaoua-ruche.webp" alt="Adamaoua" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
                 <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Adamaoua</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/Bimbia - cailloux et plage.JPG">
-                <img src="assets/backgrounds/Bimbia - cailloux et plage.JPG" alt="Bimbia"
+                data-bg="assets/backgrounds/bimbia-plage.webp">
+                <img src="assets/backgrounds/bimbia-plage.webp" alt="Bimbia"
                     class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
@@ -1542,8 +1585,8 @@
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Bimbia</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/campements-pygmes.jpg">
-                <img src="assets/backgrounds/campements-pygmes.jpg" alt="Campements Pygmés"
+                data-bg="assets/backgrounds/campements-pygmes.webp">
+                <img src="assets/backgrounds/campements-pygmes.webp" alt="Campements Pygmés"
                     class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
@@ -1554,8 +1597,8 @@
 
 
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/église-dans-le-nord-ouest-bamenda.jpg">
-                <img src="assets/backgrounds/église-dans-le-nord-ouest-bamenda.jpg" alt="Bamenda"
+                data-bg="assets/backgrounds/eglise-bamenda.webp">
+                <img src="assets/backgrounds/eglise-bamenda.webp" alt="Bamenda"
                     class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
@@ -1563,8 +1606,8 @@
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Bamenda</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/Festival-de-la-Culture-Massa.jpg">
-                <img src="assets/backgrounds/Festival-de-la-Culture-Massa.jpg" alt="Festival Massa"
+                data-bg="assets/backgrounds/festival-massa.webp">
+                <img src="assets/backgrounds/festival-massa.webp" alt="Festival Massa"
                     class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
@@ -1572,8 +1615,8 @@
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Festival Massa</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/Festival-des-arts-et-de-la-Culture-Massa.jpg">
-                <img src="assets/backgrounds/Festival-des-arts-et-de-la-Culture-Massa.jpg" alt="Arts Massa"
+                data-bg="assets/backgrounds/arts-massa.webp">
+                <img src="assets/backgrounds/arts-massa.webp" alt="Arts Massa"
                     class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
@@ -1581,8 +1624,8 @@
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Arts Massa</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/Gorges de kola - nord du cameroun.JPG">
-                <img src="assets/backgrounds/Gorges de kola - nord du cameroun.JPG" alt="Gorges de Kola"
+                data-bg="assets/backgrounds/gorges-de-kola.webp">
+                <img src="assets/backgrounds/gorges-de-kola.webp" alt="Gorges de Kola"
                     class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
@@ -1590,8 +1633,8 @@
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Gorges de Kola</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/Lagon-bleu garoua.jpg">
-                <img src="assets/backgrounds/Lagon-bleu garoua.jpg" alt="Lagon Bleu"
+                data-bg="assets/backgrounds/lagon-bleu-garoua.webp">
+                <img src="assets/backgrounds/lagon-bleu-garoua.webp" alt="Lagon Bleu"
                     class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
@@ -1599,16 +1642,16 @@
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Lagon Bleu</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/Lion - garoua.JPG">
-                <img src="assets/backgrounds/Lion - garoua.JPG" alt="Lion Garoua" class="w-full h-full object-cover">
+                data-bg="assets/backgrounds/lion-garoua.webp">
+                <img src="assets/backgrounds/lion-garoua.webp" alt="Lion Garoua" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
                 <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Lion Garoua</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/Mont cameroun , vu de Douala-Deido plage.jpg">
-                <img src="assets/backgrounds/Mont cameroun , vu de Douala-Deido plage.jpg" alt="Mont Cameroun"
+                data-bg="assets/backgrounds/mont-cameroun-deido.webp">
+                <img src="assets/backgrounds/mont-cameroun-deido.webp" alt="Mont Cameroun"
                     class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
@@ -1616,8 +1659,8 @@
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Mont Cameroun</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/New-bell-city-paint.jpg">
-                <img src="assets/backgrounds/New-bell-city-paint.jpg" alt="New Bell City"
+                data-bg="assets/backgrounds/new-bell-city.webp">
+                <img src="assets/backgrounds/new-bell-city.webp" alt="New Bell City"
                     class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
@@ -1625,16 +1668,16 @@
                         class="text-[9px] font-headline uppercase text-white tracking-wider">New Bell City</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/ngouon- chapeau.jpg">
-                <img src="assets/backgrounds/ngouon- chapeau.jpg" alt="Ngouon" class="w-full h-full object-cover">
+                data-bg="assets/backgrounds/ngouon-chapeau.webp">
+                <img src="assets/backgrounds/ngouon-chapeau.webp" alt="Ngouon" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
                 <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Ngouon</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/Parade-de-piroguiers-sur-le-fleuve-Wouri-pendant-le-Ngondo-(Fete-Traditionnelle).jpg">
-                <img src="assets/backgrounds/Parade-de-piroguiers-sur-le-fleuve-Wouri-pendant-le-Ngondo-(Fete-Traditionnelle).jpg"
+                data-bg="assets/backgrounds/ngondo-piroguiers.webp">
+                <img src="assets/backgrounds/ngondo-piroguiers.webp"
                     alt="Ngondo" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
@@ -1642,24 +1685,24 @@
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Ngondo</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/Plage de Kribi.JPG">
-                <img src="assets/backgrounds/Plage de Kribi.JPG" alt="Kribi" class="w-full h-full object-cover">
+                data-bg="assets/backgrounds/plage-kribi.webp">
+                <img src="assets/backgrounds/plage-kribi.webp" alt="Kribi" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
                 <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Kribi</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/pont-edea.jpg">
-                <img src="assets/backgrounds/pont-edea.jpg" alt="Pont d'Edéa" class="w-full h-full object-cover">
+                data-bg="assets/backgrounds/pont-edea.webp">
+                <img src="assets/backgrounds/pont-edea.webp" alt="Pont d'Edéa" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
                 <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Pont d'Edéa</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/Port de Douala-cimencam.JPG">
-                <img src="assets/backgrounds/Port de Douala-cimencam.JPG" alt="Port Douala"
+                data-bg="assets/backgrounds/port-douala.webp">
+                <img src="assets/backgrounds/port-douala.webp" alt="Port Douala"
                     class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
@@ -1667,16 +1710,16 @@
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Port Douala</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/Singe-sur-arbre-coupé.jpg">
-                <img src="assets/backgrounds/Singe-sur-arbre-coupé.jpg" alt="Singe" class="w-full h-full object-cover">
+                data-bg="assets/backgrounds/singe-garoua.webp">
+                <img src="assets/backgrounds/singe-garoua.webp" alt="Singe" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
                 <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span
                         class="text-[9px] font-headline uppercase text-white tracking-wider">Singe</span></div>
             </div>
             <div class="theme-item min-w-[180px] h-24 rounded-xl overflow-hidden cursor-pointer border-2 border-outline-variant/20 hover:border-primary/40 transition relative flex-shrink-0"
-                data-bg="assets/backgrounds/ville-yaounde.jpg">
-                <img src="assets/backgrounds/ville-yaounde.jpg" alt="Yaoundé" class="w-full h-full object-cover">
+                data-bg="assets/backgrounds/ville-yaounde.webp">
+                <img src="assets/backgrounds/ville-yaounde.webp" alt="Yaoundé" class="w-full h-full object-cover">
                 <div class="active-indicator absolute inset-0 border-2 border-primary opacity-0 transition-opacity">
                 </div>
                 <div class="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1"><span

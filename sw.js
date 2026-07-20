@@ -4,55 +4,64 @@
    Note: Les CDN (Tailwind, Font Awesome, Google Fonts) nécessitent une connexion
    ============================================================ */
 
-const CACHE_NAME = 'pyramid-v4-cdn';
+const CACHE_NAME = 'pyramid-v5-webp';
 
 /* Ressources mises en cache immédiatement à l'installation */
 const PRECACHE_ASSETS = [
     './index.html',
-    './assets/backgrounds/adamaoua-ruche.jpg',
-    './assets/backgrounds/Bimbia - cailloux et plage.JPG',
-    './assets/backgrounds/campements-pygmes.jpg',
-    './assets/backgrounds/église-dans-le-nord-ouest-bamenda.jpg',
-    './assets/backgrounds/Festival-de-la-Culture-Massa.jpg',
-    './assets/backgrounds/Festival-des-arts-et-de-la-Culture-Massa.jpg',
-    './assets/backgrounds/Gorges de kola - nord du cameroun.JPG',
-    './assets/backgrounds/Lagon-bleu garoua.jpg',
-    './assets/backgrounds/Lion - garoua.JPG',
-    './assets/backgrounds/Mont cameroun , vu de Douala-Deido plage.jpg',
-    './assets/backgrounds/New-bell-city-paint.jpg',
-    './assets/backgrounds/ngouon- chapeau.jpg',
-    './assets/backgrounds/Parade-de-piroguiers-sur-le-fleuve-Wouri-pendant-le-Ngondo-(Fete-Traditionnelle).jpg',
-    './assets/backgrounds/Plage de Kribi.JPG',
-    './assets/backgrounds/pont-edea.jpg',
-    './assets/backgrounds/Port de Douala-cimencam.JPG',
-    './assets/backgrounds/Singe-sur-arbre-coupé.jpg',
-    './assets/backgrounds/ville-yaounde.jpg',
-    './assets/logo/Primatures.png',
-    './assets/logo/minfi cm.png',
-    './assets/logo/minedub.png',
-    './assets/logo/minsante.png',
-    './assets/logo/douanes.png',
-    './assets/logo/logo-dgt-dgi.png',
-    './assets/logo/icon-pyramid-play-white.svg',
+    './product_logo(1).svg',
+    './assets/backgrounds/adamaoua-ruche.webp',
+    './assets/backgrounds/arts-massa.webp',
+    './assets/backgrounds/bimbia-plage.webp',
+    './assets/backgrounds/campements-pygmes.webp',
+    './assets/backgrounds/eglise-bamenda.webp',
+    './assets/backgrounds/festival-massa.webp',
+    './assets/backgrounds/gorges-de-kola.webp',
+    './assets/backgrounds/lagon-bleu-garoua.webp',
+    './assets/backgrounds/lion-garoua.webp',
+    './assets/backgrounds/mont-cameroun-deido.webp',
+    './assets/backgrounds/new-bell-city.webp',
+    './assets/backgrounds/ngondo-piroguiers.webp',
+    './assets/backgrounds/ngouon-chapeau.webp',
+    './assets/backgrounds/plage-kribi.webp',
+    './assets/backgrounds/pont-edea.webp',
+    './assets/backgrounds/port-douala.webp',
+    './assets/backgrounds/singe-garoua.webp',
+    './assets/backgrounds/ville-yaounde.webp',
+    './assets/logo/ANTIC.png',
+    './assets/logo/Camtel.png',
+    './assets/logo/cnps.jpg',
+    './assets/logo/Cyberix.png',
+    './assets/logo/feicom.png',
     './assets/logo/Icon-PyramidMail.svg',
+    './assets/logo/icon-pyramid-play-white.svg',
+    './assets/logo/maviance.png',
+    './assets/logo/minfi cm.png',
+    './assets/logo/Minjec.jpg',
+    './assets/logo/Minpostel.jpeg',
+    './assets/logo/nexah.png',
+    './assets/logo/Port autonome Kribi.png',
+    './assets/logo/Primatures.png',
+    './assets/logo/Source du Pays.png',
+    './assets/logo/tara.png',
 ];
 
 /* ── Installation ─────────────────────────────────────────── */
 self.addEventListener('install', event => {
     console.log('[SW] Installation...');
     event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => {
-            /* Pré-cache des assets locaux */
-            return cache.addAll(PRECACHE_ASSETS)
-                .then(() => {
-                    console.log('[SW] Précache terminé');
+        caches.open(CACHE_NAME).then(cache =>
+            /* Ajouts individuels tolérants : une 404 ne casse pas tout le précache */
+            Promise.allSettled(PRECACHE_ASSETS.map(asset => cache.add(asset)))
+                .then(results => {
+                    const failed = results
+                        .map((r, i) => r.status === 'rejected' ? PRECACHE_ASSETS[i] : null)
+                        .filter(Boolean);
+                    if (failed.length) console.warn('[SW] Précache partiel, échecs:', failed);
+                    else console.log('[SW] Précache terminé');
                     return self.skipWaiting();
                 })
-                .catch(err => {
-                    console.warn('[SW] Précache partiel:', err);
-                    return self.skipWaiting();
-                });
-        })
+        )
     );
 });
 
